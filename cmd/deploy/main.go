@@ -2,6 +2,7 @@ package main
 
 import (
 	"io"
+	"path"
 
 	"log"
 	"os"
@@ -11,7 +12,11 @@ import (
 )
 
 func NewSSHClient() *ssh.Client {
-	hostkeyCallback, err := knownhosts.New("/Users/lex/.ssh/known_hosts")
+	homedir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatalf("error getting user home dir: %v\n", err)
+	}
+	hostkeyCallback, err := knownhosts.New(path.Join(homedir, ".ssh/known_hosts"))
 	if err != nil {
 		log.Fatalf("error reading known_hosts file: %v\n", err)
 	}
