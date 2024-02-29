@@ -21,7 +21,7 @@ func NewSSHClient() *ssh.Client {
 		log.Fatalf("error reading known_hosts file: %v\n", err)
 	}
 
-	key, err := os.ReadFile("/Users/lex/.ssh/id_rsa")
+	key, err := os.ReadFile(path.Join(homedir, ".ssh/id_rsa"))
 	if err != nil {
 		log.Fatalf("error reading id_rsa file: %v\n", err)
 	}
