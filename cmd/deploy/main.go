@@ -13,11 +13,7 @@ import (
 	"neite.dev/go-deploy/cmd/config"
 )
 
-type Application struct {
-	cfg *config.UserConfig
-}
-
-func (app *Application) NewSSHClient() *ssh.Client {
+func NewSSHClient() *ssh.Client {
 	homedir, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatalf("error getting user home dir: %v\n", err)
@@ -57,13 +53,9 @@ func (app *Application) NewSSHClient() *ssh.Client {
 func main() {
 	cfg := config.ReadConfig()
 
-	app := &Application{
-		cfg: cfg,
-	}
+	fmt.Printf("App's config: %v\n", cfg.SSH.User)
 
-	fmt.Printf("App's config: %v\n", app.cfg.SSH.User)
-
-	client := app.NewSSHClient()
+	client := NewSSHClient()
 	defer func() {
 		err := client.Close()
 		if err != nil {
