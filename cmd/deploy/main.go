@@ -11,6 +11,10 @@ import (
 	"golang.org/x/crypto/ssh/knownhosts"
 )
 
+func readConfig() {
+
+}
+
 func NewSSHClient() *ssh.Client {
 	homedir, err := os.UserHomeDir()
 	if err != nil {
