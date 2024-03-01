@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"path"
 
@@ -9,13 +10,14 @@ import (
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
+	"neite.dev/go-deploy/cmd/config"
 )
 
-func readConfig() {
-
+type Application struct {
+	cfg *config.UserConfig
 }
 
-func NewSSHClient() *ssh.Client {
+func (app *Application) NewSSHClient() *ssh.Client {
 	homedir, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatalf("error getting user home dir: %v\n", err)
@@ -53,7 +55,15 @@ func NewSSHClient() *ssh.Client {
 }
 
 func main() {
-	client := NewSSHClient()
+	cfg := config.ReadConfig()
+
+	app := &Application{
+		cfg: cfg,
+	}
+
+	fmt.Printf("App's config: %v\n", app.cfg.SSH.User)
+
+	client := app.NewSSHClient()
 	defer func() {
 		err := client.Close()
 		if err != nil {
@@ -80,4 +90,5 @@ func main() {
 		}
 
 	}
+
 }

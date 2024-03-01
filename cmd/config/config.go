@@ -1,7 +1,6 @@
-package main
+package config
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -30,7 +29,25 @@ type UserConfig struct {
 	Registry *Registry `yaml:"registry"`
 }
 
-func main() {
+// Reads user's config file into UserConfig struct
+func ReadConfig() *UserConfig {
+	template, err := os.ReadFile("./newConf.yaml")
+	if err != nil {
+		log.Fatalf("error reading file: %v", err)
+	}
+
+	var config UserConfig
+
+	err = yaml.Unmarshal(template, &config)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	return &config
+}
+
+// Creates new config file for the user to fill out
+func NewConfig() {
 	template, err := os.ReadFile("./cmd/config/templates/config.yaml")
 	if err != nil {
 		log.Fatalf("error reading file: %v", err)
@@ -43,22 +60,4 @@ func main() {
 
 	dest.Write(template)
 	dest.Seek(0, 0)
-
-	var config UserConfig
-
-	destContent := make([]byte, len(template))
-
-	_, err = dest.Read(destContent)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	fmt.Println(string(destContent))
-
-	err = yaml.Unmarshal(destContent, &config)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	fmt.Printf("%#v\n", config.SSH)
 }
