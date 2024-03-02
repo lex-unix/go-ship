@@ -8,7 +8,7 @@ ssh:
   port: 22
 
 servers:
-    - 192.168.0.1
+  - 192.168.0.1
 
 # Docker
 registry:
@@ -19,7 +19,5 @@ registry:
   password:
     - DOCKER_REGISTRY_TOKEN
 
-
 env:
-    DATABASE_URL: "your-db-url"
-
+  DATABASE_URL: YOUR_DATABASE_URL
