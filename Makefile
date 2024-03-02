@@ -1,5 +1,5 @@
-MAIN_PACKAGE_PATH := ./cmd/deploy
-BINARY_NAME := deploy
+MAIN_PACKAGE_PATH := ./cmd/goship
+BINARY_NAME := goship
 
 # ==================================================================================== #
 # HELPERS

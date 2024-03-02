@@ -1,4 +1,4 @@
-module neite.dev/go-deploy
+module neite.dev/go-ship
 
 go 1.22.0
 
