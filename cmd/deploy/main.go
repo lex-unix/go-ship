@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
-	"neite.dev/go-deploy/cmd/config"
+	"neite.dev/go-deploy/internal/config"
 )
 
 func NewSSHClient() *ssh.Client {
