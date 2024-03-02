@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"path"
 
@@ -10,7 +9,6 @@ import (
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
-	"neite.dev/go-deploy/internal/config"
 )
 
 func NewSSHClient() *ssh.Client {
@@ -51,10 +49,6 @@ func NewSSHClient() *ssh.Client {
 }
 
 func main() {
-	cfg := config.ReadConfig()
-
-	fmt.Printf("App's config: %v\n", cfg.SSH.User)
-
 	client := NewSSHClient()
 	defer func() {
 		err := client.Close()
