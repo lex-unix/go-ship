@@ -11,7 +11,7 @@ import (
 )
 
 type Client struct {
-	conn *ssh.Client
+	Conn *ssh.Client
 }
 
 func NewConnection(cfg *config.UserConfig) (*Client, error) {
@@ -48,7 +48,7 @@ func NewConnection(cfg *config.UserConfig) (*Client, error) {
 		return nil, err
 	}
 
-	return &Client{conn: conn}, nil
+	return &Client{Conn: conn}, nil
 }
 
 func (c *Client) NewSession(opts ...sshOption) (*Session, error) {
@@ -60,7 +60,7 @@ func (c *Client) NewSession(opts ...sshOption) (*Session, error) {
 		}
 	}
 
-	sshSess, err := c.conn.NewSession()
+	sshSess, err := c.Conn.NewSession()
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func (c *Client) NewSession(opts ...sshOption) (*Session, error) {
 }
 
 func (c *Client) Close() error {
-	return c.conn.Close()
+	return c.Conn.Close()
 }
 
 func formatAddress(ip string, port int64) string {

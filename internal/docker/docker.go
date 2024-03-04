@@ -6,7 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
+
+	"github.com/pkg/sftp"
+	"neite.dev/go-ship/internal/ssh"
 )
 
 const quote = "\""
@@ -23,6 +27,7 @@ func IsRunning() error {
 
 func BuildImage() error {
 	cmd := exec.Command("docker", "build", "-t", "goship-app-test", "./test/integration/docker/app")
+	cmd.Env = append(cmd.Env, "DOCKER_DEFAULT_PLATFORM=linux/amd64")
 	return run(cmd)
 }
 
@@ -66,6 +71,59 @@ func RenameImage(image, user, repo string) error {
 func PushToHub(user, repo string) error {
 	cmd := exec.Command("docker", "push", user+"/"+repo)
 	return run(cmd)
+}
+
+func InstallDocker(c *ssh.Client) error {
+	// create new client for sftp
+	client, err := sftp.NewClient(c.Conn)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	srcFile, err := os.Open("./scripts/setup.sh")
+	if err != nil {
+		return err
+	}
+
+	// create script file for sftp client
+	f, err := client.Create("setup.sh")
+	if err != nil {
+		return err
+	}
+	// read the script file contents
+	content, err := io.ReadAll(srcFile)
+	if err != nil {
+		return err
+	}
+
+	// write the content to sftp file
+	if _, err := f.Write(content); err != nil {
+		return err
+	}
+
+	if err := f.Close(); err != nil {
+		return err
+	}
+
+	if err := client.Chmod("setup.sh", 0755); err != nil {
+		return err
+	}
+
+	// start new ssh session on our ssh.Client
+	session, err := c.NewSession(ssh.WithStdout(os.Stdout))
+	if err != nil {
+		return err
+	}
+
+	defer session.Close()
+
+	// execute install docker script
+	if err := session.Run("./setup.sh"); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func run(cmd *exec.Cmd) error {

@@ -7,6 +7,11 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+var (
+	ErrExit = errors.New("command exit error")
+	//other errors; prefix them with Err
+)
+
 type sshOption func(options *sessionOptions) error
 
 type sessionOptions struct {
@@ -39,7 +44,17 @@ func WithStderr(stderr io.Writer) sshOption {
 }
 
 func (s Session) Run(cmd string) error {
-	return s.sshSess.Run(cmd)
+	err := s.sshSess.Run(cmd)
+	if err != nil {
+		var exitError *ssh.ExitError
+		switch {
+		case errors.As(err, &exitError):
+			return ErrExit
+		default:
+			return err
+		}
+	}
+	return nil
 
 }
 
