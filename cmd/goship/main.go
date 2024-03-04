@@ -27,12 +27,13 @@ func main() {
 
 	cfg = config.ReadUserConfig()
 
-	log.Printf("Connecting to server: %v; Docker Hub credentials: %v, %v\n", cfg.SSH.Host, cfg.Registry.Username, cfg.Registry.RepoName)
-
 	client, err := ssh.NewConnection(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	log.Printf("Connecting to server: %v; Docker Hub credentials: %v, %v\n", cfg.SSH.Host, cfg.Registry.Username, cfg.Registry.RepoName)
+
 	defer func() {
 		err := client.Close()
 		if err != nil {
@@ -75,7 +76,7 @@ func main() {
 	}
 
 	defer func() {
-		if err := session.Close(); err != nil {
+		if err := session.Close(); err != nil && err != io.EOF {
 			log.Fatal(err)
 		}
 	}()
