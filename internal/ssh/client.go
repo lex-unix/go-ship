@@ -42,7 +42,7 @@ func NewConnection(cfg *config.UserConfig) (*Client, error) {
 		HostKeyCallback: hostkeyCallback,
 	}
 
-	addr := formatAddress(cfg.Server, *cfg.SSH.Port)
+	addr := formatAddress(cfg.Servers[0], cfg.SSH.Port)
 	conn, err := ssh.Dial("tcp", addr, config)
 	if err != nil {
 		return nil, err
@@ -84,6 +84,6 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
-func formatAddress(ip string, port int) string {
+func formatAddress(ip string, port int64) string {
 	return fmt.Sprintf("%s:%d", ip, port)
 }
