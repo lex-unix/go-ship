@@ -41,7 +41,7 @@ func main() {
 	}()
 
 	for i, cmd := range cmds {
-		session, err := client.NewSession(ssh.WithStdout(os.Stdout))
+		session, err := client.NewSession(ssh.WithStdout(os.Stdout), ssh.WithStderr(os.Stderr))
 		if err != nil {
 			log.Fatalf("error creating new session: %v\n", err)
 		}
