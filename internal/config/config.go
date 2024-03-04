@@ -15,10 +15,11 @@ type SSH struct {
 }
 
 type Registry struct {
-	Image    string   `yaml:"image"`
-	Server   string   `yaml:"server"`
-	Username []string `yaml:"username"`
-	Password []string `yaml:"password"`
+	Image    string `yaml:"image"`
+	Server   string `yaml:"server"`
+	Username string `yaml:"username"`
+	RepoName string `yaml:"reponame"`
+	Password string `yaml:"password"`
 }
 
 type UserConfig struct {
@@ -30,8 +31,8 @@ type UserConfig struct {
 }
 
 // Reads user's config file into UserConfig struct
-func ReadConfig() *UserConfig {
-	template, err := os.ReadFile("./newConf.yaml")
+func ReadUserConfig() *UserConfig {
+	template, err := os.ReadFile("./config.yaml")
 	if err != nil {
 		log.Fatalf("error reading file: %v", err)
 	}
@@ -48,12 +49,12 @@ func ReadConfig() *UserConfig {
 
 // Creates new config file for the user to fill out
 func NewConfig() {
-	template, err := os.ReadFile("./cmd/config/templates/config.yaml")
+	template, err := os.ReadFile("./internal/config/templates/user_config.yaml")
 	if err != nil {
 		log.Fatalf("error reading file: %v", err)
 	}
 
-	dest, err := os.Create("./newConf.yaml")
+	dest, err := os.Create("./config.yaml")
 	if err != nil {
 		log.Fatalf("error creating file: %v", err)
 	}

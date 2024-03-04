@@ -9,6 +9,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
+	"neite.dev/go-ship/internal/config"
 )
 
 func NewSSHClient() *ssh.Client {
@@ -48,7 +49,23 @@ func NewSSHClient() *ssh.Client {
 
 }
 
+var cmds = []string{
+	"docker --version",
+	"docker pull caps1d/go-ship",
+	"docker images",
+}
+
 func main() {
+	var cfg *config.UserConfig
+
+	if _, err := os.Stat("config.yaml"); err != nil {
+		config.NewConfig()
+	}
+
+	cfg = config.ReadUserConfig()
+
+	log.Printf("Connecting to server: %v; Docker Hub credentials: %v, %v\n", cfg.SSH.Host, cfg.Registry.Username, cfg.Registry.RepoName)
+
 	client := NewSSHClient()
 	defer func() {
 		err := client.Close()
@@ -57,24 +74,53 @@ func main() {
 		}
 	}()
 
-	for range 3 {
-		session, err := client.NewSession()
-		if err != nil {
-			log.Fatalf("error creating new session: %v\n", err)
+	session, err := client.NewSession()
+	if err != nil {
+		log.Fatalf("error creating new session: %v\n", err)
+	}
+	session.Stdout = os.Stdout
+	session.Stderr = os.Stderr
+
+	stdin, err := session.StdinPipe()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := session.Shell(); err != nil {
+		log.Fatal(err)
+	}
+
+	for i, cmd := range cmds {
+		stdin.Write([]byte(cmd + "\n"))
+		// gets stuck waiting here, need to check error without using session.Wait
+		if err := session.Wait(); err != nil {
+			if i == 0 {
+				installCmds := []string{
+					"sudo apt-get update",
+					"sudo apt-get install ca-certificates curl",
+					"sudo install -m 0755 -d /etc/apt/keyrings",
+					"sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc",
+					"sudo chmod a+r /etc/apt/keyrings/docker.asc",
+					`echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+                    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+                    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null`,
+					"sudo apt-get update",
+				}
+				// Execute installation commands
+				for _, installCmd := range installCmds {
+					stdin.Write([]byte(installCmd + "\n"))
+					if err := session.Wait(); err != nil {
+						log.Fatalf("Error executing installation command '%s': %v\n", installCmd, err)
+					}
+				}
+				continue
+			}
+			log.Println(err)
 		}
-
-		session.Stdout = os.Stdout
-
-		if err := session.Run("/root/prog.sh"); err != nil {
-			log.Printf("error running command: %v\n", err)
-			continue
-		}
-
-		err = session.Close()
-		if err != nil && err != io.EOF {
-			log.Printf("error closing session: %v\n", err)
-		}
-
+	}
+	err = session.Close()
+	if err != nil && err != io.EOF {
+		log.Printf("error closing session: %v\n", err)
 	}
 
 }

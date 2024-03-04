@@ -32,7 +32,12 @@ func RunContainer(port int, name, image string) error {
 	return run(cmd)
 }
 
-func ListContainers() []string {
+func StartContainer(name string) error {
+	cmd := exec.Command("docker", "start", name)
+	return run(cmd)
+}
+
+func ListAllContainers() []string {
 	cmd := exec.Command("docker", "ps", "-a", "--format", "\"{{.Names}}\"")
 	out, _ := cmd.Output()
 
@@ -46,6 +51,21 @@ func ListContainers() []string {
 		outList[i] = string(container)
 	}
 	return outList
+}
+
+func LoginToHub(user, pw string) error {
+	cmd := exec.Command("docker", "login", "-u", user, "-p", pw)
+	return run(cmd)
+}
+
+func RenameImage(image, user, repo string) error {
+	cmd := exec.Command("docker", "tag", image, user+"/"+repo)
+	return run(cmd)
+}
+
+func PushToHub(user, repo string) error {
+	cmd := exec.Command("docker", "push", user+"/"+repo)
+	return run(cmd)
 }
 
 func run(cmd *exec.Cmd) error {
