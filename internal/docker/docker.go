@@ -111,7 +111,7 @@ func InstallDocker(c *ssh.Client) error {
 	}
 
 	// start new ssh session on our ssh.Client
-	session, err := c.NewSession(ssh.WithStdout(os.Stdout))
+	session, err := c.NewSession(ssh.WithStdout(os.Stdout), ssh.WithStderr(os.Stderr))
 	if err != nil {
 		return err
 	}
