@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
 	"neite.dev/go-ship/internal/config"
@@ -49,6 +50,14 @@ func NewConnection(cfg *config.UserConfig) (*Client, error) {
 	}
 
 	return &Client{conn: conn}, nil
+}
+
+func (c *Client) NewSFTPClient() (*sftp.Client, error) {
+	client, err := sftp.NewClient(c.conn)
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
 }
 
 func (c *Client) NewSession(opts ...sshOption) (*Session, error) {
