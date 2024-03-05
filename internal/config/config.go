@@ -58,6 +58,7 @@ func NewConfig() {
 		log.Fatalf("error creating file: %v", err)
 	}
 
+	defer dest.Close()
+
 	dest.Write(template)
-	dest.Seek(0, 0)
 }
