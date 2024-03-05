@@ -61,6 +61,7 @@ var setupCmd = &cobra.Command{
 		err = docker.LoginToHub(usrName, userCfg.Registry.Password).Run()
 		if err != nil {
 			fmt.Println("error running `docker login`. Could not login to docker hub.")
+			return
 		}
 
 		err = docker.RenameImage(imgName, usrName, repoName).Run()
