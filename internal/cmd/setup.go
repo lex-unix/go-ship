@@ -8,7 +8,7 @@ import (
 	"neite.dev/go-ship/internal/docker"
 )
 
-var imgName = "goship-app-test"
+// var imgName = "goship-app-test"
 
 func init() {
 	rootCmd.AddCommand(setupCmd)
@@ -45,7 +45,11 @@ var setupCmd = &cobra.Command{
 			fmt.Println("Could not read your config file")
 		}
 
-		err = docker.BuildImage(userCfg.Image, "").Run()
+		imgName := userCfg.Registry.Image
+		usrName := userCfg.Registry.Username
+		repoName := userCfg.Registry.Reponame
+
+		err = docker.BuildImage(imgName, "").Run()
 		if err != nil {
 			fmt.Println("Error running `docker build`. Could not build your image.")
 		}
@@ -53,6 +57,20 @@ var setupCmd = &cobra.Command{
 		err = docker.RunContainer(3000, imgName, imgName).Run()
 		if err != nil {
 			fmt.Println("Error running `docker run`. Could not run container.")
+		}
+		err = docker.LoginToHub(usrName, userCfg.Registry.Password).Run()
+		if err != nil {
+			fmt.Println("error running `docker login`. Could not login to docker hub.")
+		}
+
+		err = docker.RenameImage(imgName, usrName, repoName).Run()
+		if err != nil {
+			fmt.Println("error running `docker tag`. Could not rename image for docker hub.")
+		}
+
+		err = docker.PushToHub(usrName, repoName).Run()
+		if err != nil {
+			fmt.Println("error running `docker push`. Could not push tag to docker hub.")
 		}
 
 	},

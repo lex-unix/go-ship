@@ -23,15 +23,15 @@ type SSH struct {
 }
 
 type Registry struct {
-	Image    string   `yaml:"image"`
-	Server   string   `yaml:"server"`
-	Username []string `yaml:"username"`
-	Password []string `yaml:"password"`
+	Image    string `yaml:"image"`
+	Server   string `yaml:"server"`
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
+	Reponame string `yaml:"reponame"`
 }
 
 type UserConfig struct {
 	Service  string    `yaml:"service"`
-	Image    string    `yaml:"image"`
 	Servers  []string  `yaml:"servers"`
 	SSH      *SSH      `yaml:"ssh"`
 	Registry *Registry `yaml:"registry"`

@@ -14,10 +14,9 @@ servers:
 registry:
   image: user/my-app
   server: registry.digitalocean.com
-  username:
-    - DOCKER_REGISTRY_TOKEN
-  password:
-    - DOCKER_REGISTRY_TOKEN
+  username: docker_username
+  password: docker_password
+  reponame: target_repo_name
 
 env:
   DATABASE_URL: YOUR_DATABASE_URL

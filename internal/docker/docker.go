@@ -2,7 +2,7 @@ package docker
 
 import (
 	"bufio"
-	"bytes"
+	// "bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -20,6 +20,7 @@ type dockerCmd struct {
 
 func (c dockerCmd) Run() error {
 	cmd := exec.Command("sh", "-c", c.cmd)
+	cmd.Env = append(cmd.Env, "DOCKER_DEFAULT_PLATFORM=linux/amd64")
 	return run(cmd)
 }
 
@@ -55,20 +56,20 @@ func RunContainer(port int, name, image string) dockerCmd {
 
 }
 
-func ListContainers() []string {
-	cmd := exec.Command("docker", "ps", "-a", "--format", "\"{{.Names}}\"")
-	out, _ := cmd.Output()
-
-	out = bytes.TrimSpace(out)
-	list := bytes.Split(out, []byte("\n"))
-	outList := make([]string, len(list))
-	for i := range list {
-		container := list[i]
-		container = bytes.TrimPrefix(container, []byte(quote))
-		container = bytes.TrimSuffix(container, []byte(quote))
-		outList[i] = string(container)
-	}
-	return outList
+func ListContainers() dockerCmd {
+	// cmd := exec.Command("docker", "ps", "-a", "--format", "\"{{.Names}}\"")
+	// out, _ := cmd.Output()
+	//
+	// out = bytes.TrimSpace(out)
+	// list := bytes.Split(out, []byte("\n"))
+	// outList := make([]string, len(list))
+	// for i := range list {
+	// 	container := list[i]
+	// 	container = bytes.TrimPrefix(container, []byte(quote))
+	// 	container = bytes.TrimSuffix(container, []byte(quote))
+	// 	outList[i] = string(container)
+	// }
+	return dockerCmd{cmd: "docker ps -a --format \"{{.Names}}\""}
 }
 
 func LoginToHub(user, pw string) dockerCmd {
