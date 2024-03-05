@@ -7,29 +7,51 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+
+	"neite.dev/go-ship/internal/ssh"
 )
 
 const quote = "\""
 
-func IsInstalled() error {
-	cmd := exec.Command("docker", "--version")
+type dockerCmd struct {
+	cmd string
+}
+
+func (c dockerCmd) Run() error {
+	cmd := exec.Command("sh", "-c", c.cmd)
 	return run(cmd)
 }
 
-func IsRunning() error {
-	cmd := exec.Command("docker", "version")
-	return run(cmd)
+func (c dockerCmd) RunSSH(client *ssh.Client) error {
+	session, err := client.NewSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	err = session.Run(c.cmd)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func BuildImage() error {
-	cmd := exec.Command("docker", "build", "-t", "goship-app-test", "./test/integration/docker/app")
-	return run(cmd)
+func IsInstalled() dockerCmd {
+	return dockerCmd{cmd: "docker --version"}
 }
 
-func RunContainer(port int, name, image string) error {
+func IsRunning() dockerCmd {
+	return dockerCmd{cmd: "docker version"}
+}
+
+func BuildImage(name, path string) dockerCmd {
+	return dockerCmd{cmd: "docker build -t goship-app-test ./test/integration/docker/app"}
+}
+
+func RunContainer(port int, name, image string) dockerCmd {
 	portMap := fmt.Sprintf("%d:%d", port, port)
-	cmd := exec.Command("docker", "run", "-d", "-p", portMap, "--name", name, image)
-	return run(cmd)
+	return dockerCmd{cmd: fmt.Sprintf("docker run -d -p %s --name %s %s", portMap, name, image)}
+
 }
 
 func ListContainers() []string {
