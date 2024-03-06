@@ -14,18 +14,18 @@ import (
 
 const quote = "\""
 
-type dockerCmd struct {
+type DockerCmd struct {
 	cmd string
 }
 
-func (c dockerCmd) Run() error {
+func (c DockerCmd) Run() error {
 	cmd := exec.Command("sh", "-c", c.cmd)
 	cmd.Env = append(cmd.Env, "DOCKER_DEFAULT_PLATFORM=linux/amd64")
 	return run(cmd)
 }
 
-func (c dockerCmd) RunSSH(client *ssh.Client) error {
-	session, err := client.NewSession()
+func (c DockerCmd) RunSSH(client *ssh.Client) error {
+	session, err := client.NewSession(ssh.WithStdout(os.Stdout), ssh.WithStderr(os.Stderr))
 	if err != nil {
 		return err
 	}
@@ -38,25 +38,25 @@ func (c dockerCmd) RunSSH(client *ssh.Client) error {
 	return nil
 }
 
-func IsInstalled() dockerCmd {
-	return dockerCmd{cmd: "docker --version"}
+func IsInstalled() DockerCmd {
+	return DockerCmd{cmd: "docker --version"}
 }
 
-func IsRunning() dockerCmd {
-	return dockerCmd{cmd: "docker version"}
+func IsRunning() DockerCmd {
+	return DockerCmd{cmd: "docker version"}
 }
 
-func BuildImage(name, path string) dockerCmd {
-	return dockerCmd{cmd: "docker build -t goship-app-test ./test/integration/docker/app"}
+func BuildImage(name, path string) DockerCmd {
+	return DockerCmd{cmd: "docker build -t goship-app-test ./test/integration/docker/app"}
 }
 
-func RunContainer(port int, name, image string) dockerCmd {
+func RunContainer(port int, name, image string) DockerCmd {
 	portMap := fmt.Sprintf("%d:%d", port, port)
-	return dockerCmd{cmd: fmt.Sprintf("docker run -d -p %s --name %s %s", portMap, name, image)}
+	return DockerCmd{cmd: fmt.Sprintf("docker run -d -p %s --name %s %s", portMap, name, image)}
 
 }
 
-func ListContainers() dockerCmd {
+func ListContainers() DockerCmd {
 	// cmd := exec.Command("docker", "ps", "-a", "--format", "\"{{.Names}}\"")
 	// out, _ := cmd.Output()
 	//
@@ -69,22 +69,30 @@ func ListContainers() dockerCmd {
 	// 	container = bytes.TrimSuffix(container, []byte(quote))
 	// 	outList[i] = string(container)
 	// }
-	return dockerCmd{cmd: "docker ps -a --format \"{{.Names}}\""}
+	return DockerCmd{cmd: "docker ps -a --format \"{{.Names}}\""}
 }
 
-func LoginToHub(user, pw string) dockerCmd {
-	return dockerCmd{cmd: fmt.Sprintf("docker login -u %s -p %s", user, pw)}
+func ListImages() DockerCmd {
+	return DockerCmd{cmd: "docker images"}
 }
 
-func RenameImage(image, user, repo string) dockerCmd {
-	return dockerCmd{cmd: fmt.Sprintf("docker tag %s %s/%s", image, user, repo)}
+func LoginToHub(user, pw string) DockerCmd {
+	return DockerCmd{cmd: fmt.Sprintf("docker login -u %s -p %s", user, pw)}
 }
 
-func PushToHub(user, repo string) dockerCmd {
-	return dockerCmd{cmd: fmt.Sprintf("docker push %s/%s", user, repo)}
+func RenameImage(image, user, repo string) DockerCmd {
+	return DockerCmd{cmd: fmt.Sprintf("docker tag %s %s/%s", image, user, repo)}
 }
 
-func InstallDocker(c *ssh.Client) error {
+func PushToHub(user, repo string) DockerCmd {
+	return DockerCmd{cmd: fmt.Sprintf("docker push %s/%s", user, repo)}
+}
+
+func PullFromHub(user, repo string) DockerCmd {
+	return DockerCmd{cmd: fmt.Sprintf("docker pull %s/%s", user, repo)}
+}
+
+func Install(c *ssh.Client) error {
 	// create new client for sftp
 	client, err := c.NewSFTPClient()
 	if err != nil {

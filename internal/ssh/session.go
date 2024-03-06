@@ -7,6 +7,11 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+var (
+	ErrExit = errors.New("command exit error")
+	//other errors; prefix them with Err
+)
+
 type sshOption func(options *sessionOptions) error
 
 type sessionOptions struct {

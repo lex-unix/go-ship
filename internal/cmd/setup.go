@@ -1,14 +1,16 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/spf13/cobra"
 	"neite.dev/go-ship/internal/config"
 	"neite.dev/go-ship/internal/docker"
+	"neite.dev/go-ship/internal/ssh"
 )
-
-// var imgName = "goship-app-test"
 
 func init() {
 	rootCmd.AddCommand(setupCmd)
@@ -72,6 +74,54 @@ var setupCmd = &cobra.Command{
 		err = docker.PushToHub(usrName, repoName).Run()
 		if err != nil {
 			fmt.Println("error running `docker push`. Could not push tag to docker hub.")
+		}
+
+		// setup connection with server
+		client, err := ssh.NewConnection(userCfg)
+		if err != nil {
+			fmt.Println("error establishing connection with server.")
+			return
+		}
+
+		fmt.Println("Connected to server")
+
+		var cmds = []docker.DockerCmd{
+			docker.IsInstalled(),
+			docker.PullFromHub(usrName, repoName),
+			docker.ListImages(),
+		}
+		for i, cmd := range cmds {
+			if err := cmd.RunSSH(client); err != nil {
+				switch {
+				case errors.Is(err, ssh.ErrExit):
+					if i == 0 {
+						// call docker install func to run shell script
+						if err := docker.Install(client); err != nil {
+							fmt.Println("error installing docker.")
+							return
+						}
+						continue
+					}
+					fmt.Printf("error from running docker command: %v", err)
+				default:
+					fmt.Printf("error from running docker command: %v", err)
+				}
+			}
+		}
+
+		session, err := client.NewSession(ssh.WithStdout(os.Stdout))
+		if err != nil {
+			fmt.Printf("error from opening a new session: %v\n", err)
+		}
+
+		defer func() {
+			if err := session.Close(); err != nil && err != io.EOF {
+				fmt.Printf("error from closing session: %v\n", err)
+			}
+		}()
+
+		if err := session.Run("exit"); err != nil {
+			fmt.Printf("error running command `exit`: %v\n", err)
 		}
 
 	},
