@@ -44,8 +44,17 @@ func WithStderr(stderr io.Writer) sshOption {
 }
 
 func (s Session) Run(cmd string) error {
-	return s.sshSess.Run(cmd)
-
+	err := s.sshSess.Run(cmd)
+	if err != nil {
+		var exitErr *ssh.ExitError
+		switch {
+		case errors.As(err, &exitErr):
+			return ErrExit
+		default:
+			return err
+		}
+	}
+	return nil
 }
 
 func (s Session) Close() error {
