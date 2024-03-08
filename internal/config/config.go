@@ -75,7 +75,10 @@ func NewConfig() error {
 	}
 	defer dest.Close()
 
-	dest.Write(template)
+	_, err = dest.Write(template)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
