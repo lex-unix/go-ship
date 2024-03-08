@@ -52,26 +52,13 @@ var setupCmd = &cobra.Command{
 		err = docker.BuildImage(imgName, "").Run()
 		if err != nil {
 			fmt.Println("Error running `docker build`. Could not build your image.")
-		}
-
-		err = docker.RunContainer(3000, imgName, imgName).Run()
-		if err != nil {
-			fmt.Println("Error running `docker run`. Could not run container.")
-		}
-		err = docker.LoginToHub(usrName, userCfg.Registry.Password).Run()
-		if err != nil {
-			fmt.Println("error running `docker login`. Could not login to docker hub.")
 			return
 		}
 
-		err = docker.RenameImage(imgName, usrName, repoName).Run()
-		if err != nil {
-			fmt.Println("error running `docker tag`. Could not rename image for docker hub.")
-		}
-
-		err = docker.PushToHub(usrName, repoName).Run()
+		err = docker.PushToHub(imgName).Run()
 		if err != nil {
 			fmt.Println("error running `docker push`. Could not push tag to docker hub.")
+			return
 		}
 
 		// setup connection with server
@@ -84,28 +71,34 @@ var setupCmd = &cobra.Command{
 
 		fmt.Println("Connected to server")
 
-		var cmds = []docker.DockerCmd{
-			docker.IsInstalled(),
-			docker.PullFromHub(usrName, repoName),
-			docker.ListImages(),
-		}
-		for i, cmd := range cmds {
-			if err := cmd.RunSSH(client); err != nil {
-				switch {
-				case errors.Is(err, ssh.ErrExit):
-					if i == 0 {
-						// call docker install func to run shell script
-						if err := installDocker(client); err != nil {
-							fmt.Println("error installing docker.")
-							return
-						}
-						continue
-					}
-					fmt.Printf("error from running docker command: %v", err)
-				default:
-					fmt.Printf("error from running docker command: %v", err)
+		err = docker.IsInstalled().RunSSH(client)
+		if err != nil {
+			switch {
+			// command `docker` could not be found meaning the docker is not installed
+			case errors.Is(err, ssh.ErrExit):
+				fmt.Println("docker is not installed; installing...")
+				err := installDocker(client)
+				if err != nil {
+					fmt.Println("could not install docker on your server")
+					return
 				}
+			default:
+				fmt.Println("could not check if docker is intsalled on the server")
+				return
 			}
+		}
+
+		err = docker.PullFromHub(usrName, repoName).RunSSH(client)
+		if err != nil {
+			fmt.Println("could not pull your image from DockerHub on the server")
+			return
+		}
+
+		// because it's the setup we can run container instead of starting or restarting it
+		err = docker.RunContainer(3000, userCfg.Service, imgName).RunSSH(client)
+		if err != nil {
+			fmt.Println("could not run your container on the server")
+			return
 		}
 
 	},
@@ -116,9 +109,20 @@ func installDocker(client *ssh.Client) error {
 	if err != nil {
 		return err
 	}
+	defer sftpClient.Close()
 
 	err = sftpClient.TransferExecutable("./scripts/setup.sh", "setup.sh")
 	if err != nil {
+		return err
+	}
+
+	session, err := client.NewSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	if err := session.Run("./setup.sh"); err != nil {
 		return err
 	}
 	return nil
