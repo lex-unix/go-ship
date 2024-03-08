@@ -81,8 +81,16 @@ func PushToHub(image string) DockerCmd {
 	return DockerCmd{cmd: fmt.Sprintf("docker push %s", image)}
 }
 
-func PullFromHub(imgName string) DockerCmd {
-	return DockerCmd{cmd: fmt.Sprintf("docker pull %s", imgName)}
+func PullFromHub(image string) DockerCmd {
+	return DockerCmd{cmd: fmt.Sprintf("docker pull %s", image)}
+}
+
+func StopContainer(container string) DockerCmd {
+	return DockerCmd{cmd: fmt.Sprintf("docker stop %s", container)}
+}
+
+func RemoveContainer(container string) DockerCmd {
+	return DockerCmd{cmd: fmt.Sprintf("docker rm %s", container)}
 }
 
 func run(cmd *exec.Cmd) error {

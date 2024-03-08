@@ -41,3 +41,12 @@ func createLockFile() (*os.File, error) {
 	}
 	return f, err
 }
+
+func lockFilePath() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	return path.Join(cwd, goshipDirName, goshipLockFilename), nil
+}

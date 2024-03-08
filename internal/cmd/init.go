@@ -9,7 +9,6 @@ import (
 
 func init() {
 	rootCmd.AddCommand(initCmd)
-	rootCmd.AddCommand(deployCmd)
 }
 
 var initCmd = &cobra.Command{
@@ -30,9 +29,4 @@ var initCmd = &cobra.Command{
 
 		return nil
 	},
-}
-
-var deployCmd = &cobra.Command{
-	Use:   "deploy",
-	Short: "Deploy your app on server via Docker",
 }
