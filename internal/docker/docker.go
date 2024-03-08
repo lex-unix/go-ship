@@ -2,7 +2,6 @@ package docker
 
 import (
 	"bufio"
-	// "bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -20,7 +19,6 @@ type DockerCmd struct {
 
 func (c DockerCmd) Run() error {
 	cmd := exec.Command("sh", "-c", c.cmd)
-	cmd.Env = append(cmd.Env, "DOCKER_DEFAULT_PLATFORM=linux/amd64")
 	return run(cmd)
 }
 
@@ -30,12 +28,7 @@ func (c DockerCmd) RunSSH(client *ssh.Client) error {
 		return err
 	}
 	defer session.Close()
-
-	err = session.Run(c.cmd)
-	if err != nil {
-		return err
-	}
-	return nil
+	return session.Run(c.cmd)
 }
 
 func IsInstalled() DockerCmd {
@@ -46,8 +39,8 @@ func IsRunning() DockerCmd {
 	return DockerCmd{cmd: "docker version"}
 }
 
-func BuildImage(name, path string) DockerCmd {
-	return DockerCmd{cmd: "docker build -t goship-app-test ./test/integration/docker/app"}
+func BuildImage(imgName, path string) DockerCmd {
+	return DockerCmd{cmd: fmt.Sprintf("docker build --platform=linux/amd64 -t %s ./test/integration/docker/app", imgName)}
 }
 
 func RunContainer(port int, name, image string) DockerCmd {
@@ -84,8 +77,8 @@ func RenameImage(image, user, repo string) DockerCmd {
 	return DockerCmd{cmd: fmt.Sprintf("docker tag %s %s/%s", image, user, repo)}
 }
 
-func PushToHub(user, repo string) DockerCmd {
-	return DockerCmd{cmd: fmt.Sprintf("docker push %s/%s", user, repo)}
+func PushToHub(image string) DockerCmd {
+	return DockerCmd{cmd: fmt.Sprintf("docker push %s", image)}
 }
 
 func PullFromHub(user, repo string) DockerCmd {
@@ -110,8 +103,8 @@ func run(cmd *exec.Cmd) error {
 		var exitErr *exec.ExitError
 		switch {
 		case errors.As(err, &exitErr):
-			errMsg := string(exitErr.Stderr)
-			return fmt.Errorf("%s", errMsg)
+			// errMsg := string(exitErr.Stderr)
+			return ssh.ErrExit
 		default:
 			return err
 		}
