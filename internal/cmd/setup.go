@@ -3,8 +3,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"io"
-	"os"
 
 	"github.com/spf13/cobra"
 	"neite.dev/go-ship/internal/config"
@@ -96,7 +94,7 @@ var setupCmd = &cobra.Command{
 				case errors.Is(err, ssh.ErrExit):
 					if i == 0 {
 						// call docker install func to run shell script
-						if err := docker.Install(client); err != nil {
+						if err := installDocker(client); err != nil {
 							fmt.Println("error installing docker.")
 							return
 						}
@@ -109,20 +107,18 @@ var setupCmd = &cobra.Command{
 			}
 		}
 
-		session, err := client.NewSession(ssh.WithStdout(os.Stdout))
-		if err != nil {
-			fmt.Printf("error from opening a new session: %v\n", err)
-		}
-
-		defer func() {
-			if err := session.Close(); err != nil && err != io.EOF {
-				fmt.Printf("error from closing session: %v\n", err)
-			}
-		}()
-
-		if err := session.Run("exit"); err != nil {
-			fmt.Printf("error running command `exit`: %v\n", err)
-		}
-
 	},
+}
+
+func installDocker(client *ssh.Client) error {
+	sftpClient, err := client.NewSFTPClient()
+	if err != nil {
+		return err
+	}
+
+	err = sftpClient.TransferExecutable("./scripts/setup.sh", "setup.sh")
+	if err != nil {
+		return err
+	}
+	return nil
 }
