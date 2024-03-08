@@ -45,9 +45,13 @@ var setupCmd = &cobra.Command{
 			fmt.Println("Could not read your config file")
 		}
 
-		imgName := userCfg.Registry.Image
-		usrName := userCfg.Registry.Username
-		repoName := userCfg.Registry.Reponame
+		commitHash, err := latestCommitHash()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		imgName := fmt.Sprintf("%s:%s", userCfg.Registry.Image, commitHash)
+		fmt.Println(imgName)
 
 		err = docker.BuildImage(imgName, "").Run()
 		if err != nil {
@@ -88,7 +92,7 @@ var setupCmd = &cobra.Command{
 			}
 		}
 
-		err = docker.PullFromHub(usrName, repoName).RunSSH(client)
+		err = docker.PullFromHub(imgName).RunSSH(client)
 		if err != nil {
 			fmt.Println("could not pull your image from DockerHub on the server")
 			return

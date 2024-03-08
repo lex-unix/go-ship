@@ -81,8 +81,8 @@ func PushToHub(image string) DockerCmd {
 	return DockerCmd{cmd: fmt.Sprintf("docker push %s", image)}
 }
 
-func PullFromHub(user, repo string) DockerCmd {
-	return DockerCmd{cmd: fmt.Sprintf("docker pull %s/%s", user, repo)}
+func PullFromHub(imgName string) DockerCmd {
+	return DockerCmd{cmd: fmt.Sprintf("docker pull %s", imgName)}
 }
 
 func run(cmd *exec.Cmd) error {
