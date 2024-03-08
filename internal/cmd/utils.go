@@ -3,7 +3,14 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
+	"path"
+)
+
+var (
+	goshipDirName      = ".goship"
+	goshipLockFilename = "goship-lock.json"
 )
 
 func latestCommitHash() (string, error) {
@@ -15,4 +22,22 @@ func latestCommitHash() (string, error) {
 	}
 	out = bytes.TrimSpace(out)
 	return string(out), nil
+}
+
+func createLockFile() (*os.File, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	lockPath := path.Join(cwd, goshipDirName)
+	err = os.Mkdir(lockPath, 0755)
+	if err != nil {
+		return nil, err
+	}
+
+	f, err := os.Create(path.Join(lockPath, goshipLockFilename))
+	if err != nil {
+		return nil, err
+	}
+	return f, err
 }

@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 
 	"github.com/spf13/cobra"
 	"neite.dev/go-ship/internal/config"
@@ -105,6 +107,27 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
+		f, err := createLockFile()
+		if err != nil {
+			log.Println(err)
+			fmt.Printf("could not create %s file\n", goshipLockFilename)
+			return
+		}
+		defer f.Close()
+
+		data := map[string]string{
+			"version": commitHash,
+			"image":   imgName,
+		}
+
+		datajson, err := json.Marshal(data)
+		if err != nil {
+			fmt.Println("error json.Marshal()")
+		}
+		_, err = f.Write(datajson)
+		if err != nil {
+			fmt.Println("could write to file")
+		}
 	},
 }
 
