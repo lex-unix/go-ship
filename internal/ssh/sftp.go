@@ -48,3 +48,7 @@ func (c *SFTPClient) TransferExecutable(src, dest string) error {
 	}
 	return nil
 }
+
+func (c *SFTPClient) Close() error {
+	return c.conn.Close()
+}
