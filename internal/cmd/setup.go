@@ -80,6 +80,7 @@ var setupCmd = &cobra.Command{
 			fmt.Println("error establishing connection with server.")
 			return
 		}
+		defer client.Close()
 
 		fmt.Println("Connected to server")
 
