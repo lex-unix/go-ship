@@ -33,6 +33,17 @@ var deployCmd = &cobra.Command{
 			return
 		}
 
+		exists, err := versionExists(lfPath, commitHash)
+		if err != nil {
+			fmt.Printf("could not check version in lock file. Error: %s", err)
+			return
+		}
+
+		if exists {
+			fmt.Println("already on the most recent version.")
+			return
+		}
+
 		userCfg, err := config.ReadConfig()
 		if err != nil {
 			fmt.Println("Could not read your config file")
@@ -95,6 +106,8 @@ var deployCmd = &cobra.Command{
 
 		defer f.Close()
 
+		// body, err :=
+
 		data := map[string]string{
 			"version": commitHash,
 			"image":   imgName,
@@ -107,6 +120,11 @@ var deployCmd = &cobra.Command{
 		}
 
 		if _, err := f.Write(datajson); err != nil {
+			fmt.Println("Could not append data to lock file")
+			return
+		}
+
+		if _, err := f.Write([]byte(string("\n"))); err != nil {
 			fmt.Println("Could not append data to lock file")
 			return
 		}

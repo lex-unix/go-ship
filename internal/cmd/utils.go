@@ -1,8 +1,11 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path"
@@ -49,4 +52,38 @@ func lockFilePath() (string, error) {
 	}
 
 	return path.Join(cwd, goshipDirName, goshipLockFilename), nil
+}
+
+func versionExists(filePath, version string) (bool, error) {
+	// Read the existing file from the file
+	file, err := os.Open(filePath)
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	data := make([]map[string]string, 0)
+
+	reader := bufio.NewReader(file)
+	for {
+		line, _, err := reader.ReadLine()
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return false, err
+		}
+		var row map[string]string
+		if err := json.Unmarshal(line, &row); err != nil {
+			return false, err
+		}
+
+		data = append(data, row)
+	}
+
+	if lastObj := data[len(data)-1]; lastObj["version"] == version {
+		return true, nil
+	}
+
+	return false, nil
 }
