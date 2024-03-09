@@ -128,6 +128,10 @@ var setupCmd = &cobra.Command{
 		if err != nil {
 			fmt.Println("could write to file")
 		}
+		_, err = f.Write([]byte(string("\n")))
+		if err != nil {
+			fmt.Println("could write to file")
+		}
 	},
 }
 
