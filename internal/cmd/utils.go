@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/exec"
 	"path"
@@ -86,4 +87,23 @@ func versionExists(filePath, version string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func writeToLockFile(f *os.File, data map[string]string) error {
+	datajson, err := json.Marshal(data)
+	if err != nil {
+		log.Println("error json.Marshal()")
+		return err
+	}
+	_, err = f.Write(datajson)
+	if err != nil {
+		log.Println("could write to file")
+		return err
+	}
+	_, err = f.Write([]byte(string("\n")))
+	if err != nil {
+		log.Println("could write to file")
+		return err
+	}
+	return nil
 }

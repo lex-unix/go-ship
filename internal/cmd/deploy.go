@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -106,27 +106,17 @@ var deployCmd = &cobra.Command{
 
 		defer f.Close()
 
-		// body, err :=
-
 		data := map[string]string{
 			"version": commitHash,
 			"image":   imgName,
 		}
 
-		datajson, err := json.Marshal(data)
-		if err != nil {
-			fmt.Println("error json.Marshal()")
+		if err := writeToLockFile(f, data); err != nil {
+			log.Println(err)
+			fmt.Printf("could not write to %s file\n. Error: %s", goshipLockFilename, err)
 			return
+
 		}
 
-		if _, err := f.Write(datajson); err != nil {
-			fmt.Println("Could not append data to lock file")
-			return
-		}
-
-		if _, err := f.Write([]byte(string("\n"))); err != nil {
-			fmt.Println("Could not append data to lock file")
-			return
-		}
 	},
 }

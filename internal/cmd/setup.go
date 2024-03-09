@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -120,18 +119,12 @@ var setupCmd = &cobra.Command{
 			"image":   imgName,
 		}
 
-		datajson, err := json.Marshal(data)
-		if err != nil {
-			fmt.Println("error json.Marshal()")
+		if err := writeToLockFile(f, data); err != nil {
+			log.Println(err)
+			fmt.Printf("could not write to %s file\n. Error: %s", goshipLockFilename, err)
+			return
 		}
-		_, err = f.Write(datajson)
-		if err != nil {
-			fmt.Println("could write to file")
-		}
-		_, err = f.Write([]byte(string("\n")))
-		if err != nil {
-			fmt.Println("could write to file")
-		}
+
 	},
 }
 
