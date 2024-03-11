@@ -21,6 +21,11 @@ var deployCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		// check if version lock file exists
 		lfPath, err := lockfile.LockPath()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
 		if _, err := os.Stat(lfPath); err != nil {
 			fmt.Println("Missing lock file, please do `goship setup`.")
 			return

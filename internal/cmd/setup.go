@@ -108,7 +108,7 @@ var setupCmd = &cobra.Command{
 
 		f, err := lockfile.CreateLockFile()
 		if err != nil {
-			fmt.Printf("could not create %s file\n", goshipLockFilename)
+			fmt.Println("could not create lockfile")
 			return
 		}
 		defer f.Close()
