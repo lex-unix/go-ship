@@ -17,6 +17,11 @@ var (
 	goshipLockFilename = "goship-lock.json"
 )
 
+type LockVersion struct {
+	Version string `json:"version"`
+	Image   string `json:"image"`
+}
+
 func latestCommitHash() (string, error) {
 	c := exec.Command("git", "rev-parse", "--short", "HEAD")
 	out, err := c.Output()
@@ -106,4 +111,28 @@ func writeToLockFile(f *os.File, data map[string]string) error {
 		return err
 	}
 	return nil
+}
+
+func readLockFile(file io.Reader) ([]LockVersion, error) {
+	var data []LockVersion
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		var entry LockVersion
+
+		b := scanner.Bytes()
+
+		err := json.Unmarshal(b, &entry)
+		if err != nil {
+			return nil, err
+		}
+
+		data = append(data, entry)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+
+	return data, nil
 }
