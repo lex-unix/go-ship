@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"neite.dev/go-ship/internal/lockfile"
 )
 
 func init() {
@@ -15,7 +16,7 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List versions of your application",
 	Run: func(cmd *cobra.Command, args []string) {
-		lockPath, err := lockFilePath()
+		lockPath, err := lockfile.LockPath()
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -27,7 +28,7 @@ var listCmd = &cobra.Command{
 			return
 		}
 
-		data, err := readLockFile(lock)
+		data, err := lockfile.Read(lock)
 		if err != nil {
 			fmt.Println(err)
 			return

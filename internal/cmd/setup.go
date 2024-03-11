@@ -3,11 +3,11 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"log"
 
 	"github.com/spf13/cobra"
 	"neite.dev/go-ship/internal/config"
 	"neite.dev/go-ship/internal/docker"
+	"neite.dev/go-ship/internal/lockfile"
 	"neite.dev/go-ship/internal/ssh"
 )
 
@@ -106,22 +106,20 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		f, err := createLockFile()
+		f, err := lockfile.CreateLockFile()
 		if err != nil {
-			log.Println(err)
 			fmt.Printf("could not create %s file\n", goshipLockFilename)
 			return
 		}
 		defer f.Close()
 
-		data := map[string]string{
-			"version": commitHash,
-			"image":   imgName,
+		data := lockfile.LockVersion{
+			Version: commitHash,
+			Image:   imgName,
 		}
 
-		if err := writeToLockFile(f, data); err != nil {
-			log.Println(err)
-			fmt.Printf("could not write to %s file\n. Error: %s", goshipLockFilename, err)
+		if err := lockfile.Write(f, data); err != nil {
+			fmt.Printf("could not write to lockfil\n. Error: %s", err)
 			return
 		}
 
