@@ -13,7 +13,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(rollbackCmd)
-	rootCmd.LocalFlags().String("version", "", "commit hash for rollback")
+	rootCmd.PersistentFlags().String("version", "", "commit hash for rollback")
 }
 
 var rollbackCmd = &cobra.Command{
@@ -25,6 +25,22 @@ var rollbackCmd = &cobra.Command{
 		if err != nil {
 			fmt.Println("failed to get version flag")
 			log.Println(err)
+			return
+		}
+
+		if commitHash == "" {
+			fmt.Println("no rollback version specified. Use `version` flag to set rollback version.")
+			return
+		}
+
+		latest, err := latestCommitHash()
+		if err != nil {
+			fmt.Printf("Error running `git rev-parse --short HEAD`. Error: %q", err)
+			return
+		}
+
+		if latest == commitHash {
+			fmt.Println("provided hash is the latest version. Choose an earlier version")
 			return
 		}
 
@@ -89,6 +105,7 @@ var rollbackCmd = &cobra.Command{
 			return
 		}
 
-		// This is for testing rollback
+		fmt.Printf("rollback performed on version: %s", commitHash)
+
 	},
 }
