@@ -19,10 +19,11 @@ var (
 )
 
 func CreateLockFile() (*os.File, error) {
-	lockPath, err := LockPath()
+	cwd, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
+	lockPath := path.Join(cwd, goshipDirName)
 
 	err = os.Mkdir(lockPath, 0755)
 	if err != nil {
