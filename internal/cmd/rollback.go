@@ -6,7 +6,9 @@ import (
 
 	"github.com/spf13/cobra"
 	"neite.dev/go-ship/internal/config"
+	"neite.dev/go-ship/internal/docker"
 	"neite.dev/go-ship/internal/lockfile"
+	"neite.dev/go-ship/internal/ssh"
 )
 
 func init() {
@@ -86,5 +88,7 @@ var rollbackCmd = &cobra.Command{
 			fmt.Println("could not run your container on the server")
 			return
 		}
+
+		// This is for testing rollback
 	},
 }
