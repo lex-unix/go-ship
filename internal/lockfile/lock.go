@@ -18,16 +18,6 @@ var (
 	goshipLockFilename = "goship-lock.json"
 )
 
-func LockPath() (string, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-
-	p := path.Join(cwd, goshipDirName, goshipLockFilename)
-	return p, nil
-}
-
 func CreateLockFile() (*os.File, error) {
 	lockPath, err := LockPath()
 	if err != nil {
@@ -121,4 +111,20 @@ func OpenFile() (*os.File, error) {
 	}
 
 	return file, nil
+
+}
+
+func LockPath() (string, error) {
+	return lockPath(os.Getwd)
+}
+
+func lockPath(getwd func() (string, error)) (string, error) {
+	cwd, err := getwd()
+	if err != nil {
+		return "", err
+	}
+
+	p := path.Join(cwd, goshipDirName, goshipLockFilename)
+	return p, nil
+
 }
