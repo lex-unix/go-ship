@@ -1,3 +1,5 @@
+include .env
+
 MAIN_PACKAGE_PATH := ./cmd/goship
 BINARY_NAME := goship
 
@@ -74,6 +76,10 @@ run/live:
 		--build.include_ext "go, tpl, tmpl, html, css, scss, js, ts, sql, jpeg, jpg, gif, png, bmp, svg, webp, ico" \
 		--misc.clean_on_exit "true"
 
+## cleanup/docker: removes all images that match REGISRTY_NAME
+.PHONY: cleanup/docker
+cleanup/docker:
+	@docker rmi -f $$(docker images | grep ${REGISRTY_NAME} | awk '{print $$3}')
 
 # ==================================================================================== #
 # OPERATIONS

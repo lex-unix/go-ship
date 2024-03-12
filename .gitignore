@@ -1,4 +1,5 @@
 .DS_Store
+.env
 
 goship.yaml
 
@@ -26,3 +27,4 @@ goship.yaml
 
 # Go workspace file
 go.work
+
