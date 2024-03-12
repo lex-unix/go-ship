@@ -40,7 +40,7 @@ func IsRunning() DockerCmd {
 }
 
 func BuildImage(imgName, path string) DockerCmd {
-	return DockerCmd{cmd: fmt.Sprintf("docker build --platform=linux/amd64 -t %s ./test/integration/docker/app", imgName)}
+	return DockerCmd{cmd: fmt.Sprintf("docker build --platform=linux/amd64 -t %s %s", imgName, path)}
 }
 
 func RunContainer(port int, name, image string) DockerCmd {

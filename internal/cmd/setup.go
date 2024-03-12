@@ -51,10 +51,10 @@ var setupCmd = &cobra.Command{
 			fmt.Println(err)
 			return
 		}
-		imgName := fmt.Sprintf("%s:%s", userCfg.Registry.Image, commitHash)
-		fmt.Println(imgName)
 
-		err = docker.BuildImage(imgName, "").Run()
+		imgName := fmt.Sprintf("%s/%s:%s", userCfg.Registry.Username, userCfg.Registry.Image, commitHash)
+
+		err = docker.BuildImage(imgName, userCfg.Dockerfile).Run()
 		if err != nil {
 			fmt.Println("Error running `docker build`. Could not build your image.")
 			return

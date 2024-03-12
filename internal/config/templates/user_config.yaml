@@ -1,22 +1,15 @@
-# Name of your application. Used to uniquely configure containers.
 service: my-app
 
-# SSH
-ssh:
-  user: root
-  host: 192.168.0.1
-  port: 22
+dockerfile: .
 
 servers:
   - 192.168.0.1
 
-# Docker
-registry:
-  image: user/my-app
-  server: registry.digitalocean.com
-  username: docker_username
-  password: docker_password
-  reponame: target_repo_name
+ssh:
+  user: root
+  port: 22
 
-env:
-  DATABASE_URL: YOUR_DATABASE_URL
+registry:
+  image: REGISTY_IMAGE
+  username: REGISTY_USERNAME
+  password: REGISTY_PASSWORD

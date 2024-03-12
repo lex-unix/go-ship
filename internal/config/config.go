@@ -16,10 +16,8 @@ var (
 var templateFS embed.FS
 
 type SSH struct {
-	User    string `yaml:"user"`
-	SSHPKey string `yaml:"sshPKey"`
-	Host    string `yaml:"host"`
-	Port    int64  `yaml:"port"`
+	User string `yaml:"user"`
+	Port int64  `yaml:"port"`
 }
 
 type Registry struct {
@@ -27,14 +25,14 @@ type Registry struct {
 	Server   string `yaml:"server"`
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
-	Reponame string `yaml:"reponame"`
 }
 
 type UserConfig struct {
-	Service  string    `yaml:"service"`
-	Servers  []string  `yaml:"servers"`
-	SSH      *SSH      `yaml:"ssh"`
-	Registry *Registry `yaml:"registry"`
+	Service    string    `yaml:"service"`
+	Dockerfile string    `yaml:"dockerfile"`
+	Servers    []string  `yaml:"servers"`
+	SSH        *SSH      `yaml:"ssh"`
+	Registry   *Registry `yaml:"registry"`
 }
 
 // ReadConfig reads user's config file into UserConfig struct

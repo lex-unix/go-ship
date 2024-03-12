@@ -61,9 +61,9 @@ var deployCmd = &cobra.Command{
 			fmt.Println("Could not read your config file")
 		}
 
-		imgName := fmt.Sprintf("%s:%s", userCfg.Registry.Image, commitHash)
+		imgName := fmt.Sprintf("%s/%s:%s", userCfg.Registry.Username, userCfg.Registry.Image, commitHash)
 
-		err = docker.BuildImage(imgName, "").Run()
+		err = docker.BuildImage(imgName, userCfg.Dockerfile).Run()
 		if err != nil {
 			fmt.Println("Error running `docker build`. Could not build your image.")
 			return
