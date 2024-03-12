@@ -11,6 +11,8 @@ import (
 type LockVersion struct {
 	Version string `json:"version"`
 	Image   string `json:"image"`
+	Message string `json:"commitMessage"`
+	Date    string `json:"date"`
 }
 
 var (

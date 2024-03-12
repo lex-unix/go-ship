@@ -33,9 +33,9 @@ var listCmd = &cobra.Command{
 			fmt.Println(err)
 			return
 		}
-		fmt.Printf("Version\t\tImage name\n\n")
+		fmt.Printf("Version\t\tCommit Message\t\tDate\n\n")
 		for _, entry := range data {
-			fmt.Printf("%s\t\t%s\n", entry.Version, entry.Image)
+			fmt.Printf("%s\t\t%s\t\t%s\n", entry.Version, entry.Message, entry.Date)
 		}
 	},
 }

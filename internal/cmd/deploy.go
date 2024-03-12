@@ -118,9 +118,17 @@ var deployCmd = &cobra.Command{
 
 		defer f.Close()
 
+		commitMsg, err := latestCommitMsg()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
 		data := lockfile.LockVersion{
 			Version: commitHash,
 			Image:   imgName,
+			Message: commitMsg,
+			Date:    now(),
 		}
 
 		if err := lockfile.Write(f, data); err != nil {
