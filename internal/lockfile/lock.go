@@ -43,39 +43,51 @@ func CreateLockFile() (*os.File, error) {
 func Read(file io.Reader) ([]LockVersion, error) {
 	var data []LockVersion
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		var entry LockVersion
-
-		b := scanner.Bytes()
-
-		err := json.Unmarshal(b, &entry)
-		if err != nil {
-			return nil, err
-		}
-
-		data = append(data, entry)
-	}
-
-	if err := scanner.Err(); err != nil {
+	b, err := io.ReadAll(file)
+	if err != nil {
 		return nil, err
 	}
 
+	err = json.Unmarshal(b, &data)
+	if err != nil {
+		return nil, err
+	}
+
+	// scanner := bufio.NewScanner(file)
+	// for scanner.Scan() {
+	// 	var entry LockVersion
+	//
+	// 	b := scanner.Bytes()
+	//
+	// 	err := json.Unmarshal(b, &entry)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	//
+	// 	data = append(data, entry)
+	// }
+	//
+	// if err := scanner.Err(); err != nil {
+	// 	return nil, err
+	// }
+	//
 	return data, nil
 }
 
-func Write(file io.Writer, entry LockVersion) error {
-	b, err := json.Marshal(entry)
+func Write(file io.ReadWriter, entry LockVersion) error {
+	data, err := Read(file)
+	if err != nil {
+		return err
+	}
+
+	data = append(data, entry)
+
+	b, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
 
 	_, err = file.Write(b)
-	if err != nil {
-		return err
-	}
-
-	_, err = file.Write([]byte("\n"))
 	if err != nil {
 		return err
 	}
