@@ -16,8 +16,10 @@ var (
 var templateFS embed.FS
 
 type SSH struct {
+	// optional, default = "root"
 	User string `yaml:"user"`
-	Port int64  `yaml:"port"`
+	// optional, default = 22
+	Port int64 `yaml:"port"`
 }
 
 type Registry struct {
@@ -28,11 +30,12 @@ type Registry struct {
 }
 
 type UserConfig struct {
-	Service    string    `yaml:"service"`
-	Dockerfile string    `yaml:"dockerfile"`
-	Servers    []string  `yaml:"servers"`
-	SSH        *SSH      `yaml:"ssh"`
-	Registry   *Registry `yaml:"registry"`
+	Service string `yaml:"service"`
+	// optional, default = "."
+	Dockerfile string   `yaml:"dockerfile"`
+	Servers    []string `yaml:"servers"`
+	SSH        SSH      `yaml:"ssh"`
+	Registry   Registry `yaml:"registry"`
 }
 
 // ReadConfig reads user's config file into UserConfig struct
@@ -52,6 +55,17 @@ func ReadConfig() (*UserConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if config.Dockerfile == "" {
+		config.Dockerfile = "."
+	}
+	if config.SSH.User == "" {
+		config.SSH.User = "root"
+	}
+	if config.SSH.Port == 0 {
+		config.SSH.Port = 22
+	}
+
 	return &config, nil
 }
 
