@@ -127,7 +127,7 @@ var setupCmd = &cobra.Command{
 		}
 
 		if err := lockfile.Write(f, data); err != nil {
-			fmt.Printf("could not write to lockfil\n. Error: %s", err)
+			fmt.Printf("could not write to lockfile\n. Error: %s", err)
 			return
 		}
 

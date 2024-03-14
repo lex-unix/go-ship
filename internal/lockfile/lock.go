@@ -3,10 +3,13 @@ package lockfile
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"path"
 )
+
+var ErrEmpty = errors.New("Empty File")
 
 type LockVersion struct {
 	Version string `json:"version"`
@@ -48,36 +51,29 @@ func Read(file io.Reader) ([]LockVersion, error) {
 		return nil, err
 	}
 
+	if len(b) == 0 {
+		return nil, ErrEmpty
+	}
+
 	err = json.Unmarshal(b, &data)
 	if err != nil {
 		return nil, err
 	}
 
-	// scanner := bufio.NewScanner(file)
-	// for scanner.Scan() {
-	// 	var entry LockVersion
-	//
-	// 	b := scanner.Bytes()
-	//
-	// 	err := json.Unmarshal(b, &entry)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	//
-	// 	data = append(data, entry)
-	// }
-	//
-	// if err := scanner.Err(); err != nil {
-	// 	return nil, err
-	// }
-	//
 	return data, nil
 }
 
 func Write(file io.ReadWriter, entry LockVersion) error {
 	data, err := Read(file)
+
 	if err != nil {
-		return err
+		switch {
+		case errors.Is(err, ErrEmpty):
+			data = make([]LockVersion, 1)
+		default:
+			return err
+		}
+
 	}
 
 	data = append(data, entry)
@@ -86,7 +82,6 @@ func Write(file io.ReadWriter, entry LockVersion) error {
 	if err != nil {
 		return err
 	}
-
 	_, err = file.Write(b)
 	if err != nil {
 		return err

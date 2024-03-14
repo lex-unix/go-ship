@@ -110,7 +110,7 @@ var deployCmd = &cobra.Command{
 			return
 		}
 
-		f, err := os.OpenFile(lfPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		f, err := os.OpenFile(lfPath, os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			fmt.Println("Could not open `goship-lock.json`")
 			return
