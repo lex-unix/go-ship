@@ -1,27 +1,51 @@
-version: "3.7"
-name: "goship-test"
+name: "go-ship-test"
 services:
     shared:
         build:
             context: docker/shared
+            dockerfile: Dockerfile
         volumes:
-            - shared:/shared
+            - shared-ssh:/work/ssh
+        networks:
+            - app-network
+
     vm1:
-        # privileged: true
         build:
             context: docker/vm
+            dockerfile: Dockerfile
         volumes:
-            - shared:/shared
+            - shared-ssh:/shared/ssh:ro
+        networks:
+            - app-network
+        depends_on:
+            - shared
     vm2:
-        # privileged: true
         build:
             context: docker/vm
+            dockerfile: Dockerfile
         volumes:
-            - shared:/shared
+            - shared-ssh:/shared/ssh:ro
+        networks:
+            - app-network
+        depends_on:
+            - shared
+
     app:
         build:
             context: docker/app
-        ports:
-            - 3000:3000
+            dockerfile: Dockerfile
+        volumes:
+            - shared-ssh:/shared/ssh:ro
+        networks:
+            - app-network
+        depends_on:
+            - shared
+            - vm1
+            - vm2
+
+networks:
+    app-network:
+        driver: bridge
+
 volumes:
-    shared:
+    shared-ssh:

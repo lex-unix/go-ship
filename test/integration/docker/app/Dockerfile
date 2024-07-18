@@ -1,18 +1,13 @@
-# Use an official Node.js runtime as the base image
-FROM node:20
+FROM ubuntu:22.04
 
-# Set the working directory in the Docker container
-WORKDIR /app
+WORKDIR /work
 
-# Copy package.json and package-lock.json to the working directory
-COPY package*.json ./
+RUN apt-get update && apt-get install -y openssh-client
 
-# Copy the entire project to the working directory
-COPY . .
+RUN mkdir -p /root/.ssh && ln -s /shared/ssh/id_rsa /root/.ssh/id_rsa
 
-# Expose the port the app will run on
-EXPOSE 3000
+COPY boot.sh .
 
-# Run the app when the Docker image is run
-CMD ["node", "index.js"]
+RUN chmod +x ./boot.sh
 
+CMD [ "./boot.sh" ]
