@@ -20,6 +20,8 @@ services:
             - app-network
         depends_on:
             - shared
+        ports:
+            - 3001:3000
 
     vm2:
         privileged: true
@@ -32,6 +34,8 @@ services:
             - app-network
         depends_on:
             - shared
+        ports:
+            - 3000:3000
 
     deployer:
         build:
@@ -42,6 +46,7 @@ services:
             - ../..:/go-ship
             - shared-ssh:/shared
             - registry:/registry
+            - docker-cache:/var/lib/docker
         networks:
             - app-network
         depends_on:
@@ -70,3 +75,4 @@ networks:
 volumes:
     shared-ssh:
     registry:
+    docker-cache:
