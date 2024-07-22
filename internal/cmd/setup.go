@@ -52,7 +52,7 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		imgName := fmt.Sprintf("%s/%s:%s", userCfg.Registry.Username, userCfg.Registry.Image, commitHash)
+		imgName := fmt.Sprintf("%s:%s", userCfg.Image, commitHash)
 
 		err = docker.BuildImage(imgName, userCfg.Dockerfile).Run()
 		if err != nil {

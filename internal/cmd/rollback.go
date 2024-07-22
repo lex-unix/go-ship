@@ -68,7 +68,7 @@ var rollbackCmd = &cobra.Command{
 			fmt.Println("Could not read your config file")
 		}
 
-		imgName := fmt.Sprintf("%s/%s:%s", userCfg.Registry.Username, userCfg.Registry.Image, commitHash)
+		imgName := fmt.Sprintf("%s/%s:%s", userCfg.Registry.Username, userCfg.Image, commitHash)
 
 		// pull from hub with version tag
 		client, err := ssh.NewConnection(userCfg)

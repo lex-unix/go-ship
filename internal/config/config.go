@@ -16,22 +16,19 @@ var (
 var templateFS embed.FS
 
 type SSH struct {
-	// optional, default = "root"
 	User string `yaml:"user"`
-	// optional, default = 22
-	Port int64 `yaml:"port"`
+	Port int64  `yaml:"port"`
 }
 
 type Registry struct {
-	Image    string `yaml:"image"`
 	Server   string `yaml:"server"`
 	Username string `yaml:"username"`
 	Password string `yaml:"password"`
 }
 
 type UserConfig struct {
-	Service string `yaml:"service"`
-	// optional, default = "."
+	Service    string   `yaml:"service"`
+	Image      string   `yaml:"image"`
 	Dockerfile string   `yaml:"dockerfile"`
 	Servers    []string `yaml:"servers"`
 	SSH        SSH      `yaml:"ssh"`
