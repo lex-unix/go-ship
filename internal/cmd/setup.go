@@ -57,10 +57,18 @@ var setupCmd = &cobra.Command{
 		err = docker.BuildImage(imgName, userCfg.Dockerfile).Run()
 		if err != nil {
 			fmt.Println("Error running `docker build`. Could not build your image.")
+			fmt.Println(err)
 			return
 		}
 
-		err = docker.PushToHub(imgName).Run()
+		err = docker.Tag(imgName, userCfg.Registry.Server).Run()
+		if err != nil {
+			fmt.Println("Error running `docker tag`.")
+			fmt.Println(err)
+			return
+		}
+
+		err = docker.PushToHub(fmt.Sprintf("%s/%s:%s", userCfg.Registry.Server, userCfg.Image, commitHash)).Run()
 		if err != nil {
 			fmt.Println("error running `docker push`. Could not push tag to docker hub.")
 			return
@@ -70,6 +78,7 @@ var setupCmd = &cobra.Command{
 		client, err := ssh.NewConnection(userCfg)
 		if err != nil {
 			fmt.Println("error establishing connection with server.")
+			fmt.Println(err)
 			return
 		}
 		defer client.Close()
@@ -93,14 +102,16 @@ var setupCmd = &cobra.Command{
 			}
 		}
 
-		err = docker.PullFromHub(imgName).RunSSH(client)
+		err = docker.PullFromHub(fmt.Sprintf("%s/%s:%s", userCfg.Registry.Server, userCfg.Image, commitHash)).RunSSH(client)
 		if err != nil {
 			fmt.Println("could not pull your image from DockerHub on the server")
 			return
 		}
 
 		// because it's the setup we can run container instead of starting or restarting it
-		err = docker.RunContainer(3000, userCfg.Service, imgName).RunSSH(client)
+
+		imgWithRegistry := fmt.Sprintf("%s/%s", userCfg.Registry.Server, imgName)
+		err = docker.RunContainer(3000, userCfg.Service, imgWithRegistry).RunSSH(client)
 		if err != nil {
 			fmt.Println("could not run your container on the server")
 			return

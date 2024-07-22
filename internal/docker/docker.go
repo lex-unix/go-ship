@@ -40,7 +40,7 @@ func IsRunning() DockerCmd {
 }
 
 func BuildImage(imgName, path string) DockerCmd {
-	return DockerCmd{cmd: fmt.Sprintf("docker build --platform=linux/amd64 -t %s %s", imgName, path)}
+	return DockerCmd{cmd: fmt.Sprintf("docker build -t %s %s", imgName, path)}
 }
 
 func RunContainer(port int, name, image string) DockerCmd {
@@ -75,6 +75,10 @@ func LoginToHub(user, pw string) DockerCmd {
 
 func RenameImage(image, user, repo string) DockerCmd {
 	return DockerCmd{cmd: fmt.Sprintf("docker tag %s %s/%s", image, user, repo)}
+}
+
+func Tag(image, registry string) DockerCmd {
+	return DockerCmd{cmd: fmt.Sprintf("docker tag %s %s/%s", image, registry, image)}
 }
 
 func PushToHub(image string) DockerCmd {
