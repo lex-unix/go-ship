@@ -5,7 +5,7 @@ services:
             context: docker/shared
             dockerfile: Dockerfile
         volumes:
-            - shared-ssh:/shared
+            - shared:/shared
         networks:
             - app-network
 
@@ -15,7 +15,7 @@ services:
             context: docker/vm
             dockerfile: Dockerfile
         volumes:
-            - shared-ssh:/shared
+            - shared:/shared
         networks:
             - app-network
         depends_on:
@@ -29,7 +29,7 @@ services:
             context: docker/vm
             dockerfile: Dockerfile
         volumes:
-            - shared-ssh:/shared
+            - shared:/shared
         networks:
             - app-network
         depends_on:
@@ -44,13 +44,16 @@ services:
         privileged: true
         volumes:
             - ../..:/go-ship
-            - shared-ssh:/shared
+            - shared:/shared
             - registry:/registry
             - docker-cache:/var/lib/docker
         networks:
             - app-network
         depends_on:
             - shared
+            - registry
+            - vm1
+            - vm2
 
     registry:
         build:
@@ -61,7 +64,7 @@ services:
             - REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt
             - REGISTRY_HTTP_TLS_KEY=/certs/domain.key
         volumes:
-            - shared-ssh:/shared
+            - shared:/shared
             - registry:/var/lib/registry/
         depends_on:
             - shared
@@ -73,6 +76,6 @@ networks:
         driver: bridge
 
 volumes:
-    shared-ssh:
+    shared:
     registry:
     docker-cache:
