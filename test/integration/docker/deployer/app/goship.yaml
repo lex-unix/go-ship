@@ -1,0 +1,10 @@
+service: test-app
+image: test-app
+dockerfile: .
+servers:
+  - vm1
+  - vm2
+registry:
+  server: registry:4443
+  username: root
+  password: root
