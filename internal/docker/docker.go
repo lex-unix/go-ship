@@ -82,7 +82,7 @@ func RenameImage(image, user, repo string) DockerCmd {
 }
 
 func Tag(image, registry string) DockerCmd {
-	return DockerCmd{cmd: fmt.Sprintf("docker tag %s %s/%s", image, registry, image)}
+	return DockerCmd{cmd: fmt.Sprintf("docker tag %s %s", image, registry)}
 }
 
 func PushToHub(image string) DockerCmd {
