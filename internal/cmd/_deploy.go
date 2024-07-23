@@ -12,11 +12,11 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(deployCmd)
+	rootCmd.AddCommand(deploy2Cmd)
 }
 
-var deployCmd = &cobra.Command{
-	Use:   "deploy",
+var deploy2Cmd = &cobra.Command{
+	Use:   "_deploy2",
 	Short: "Deploy your latest image from Docker Hub",
 	Run: func(cmd *cobra.Command, args []string) {
 		// check if version lock file exists
