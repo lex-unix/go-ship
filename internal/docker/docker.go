@@ -69,6 +69,10 @@ func ListImages() DockerCmd {
 	return DockerCmd{cmd: "docker images"}
 }
 
+func Start(conatiner string) DockerCmd {
+	return DockerCmd{cmd: fmt.Sprintf("docker start %s", conatiner)}
+}
+
 func LoginToHub(user, pw string) DockerCmd {
 	return DockerCmd{cmd: fmt.Sprintf("docker login -u %s -p %s", user, pw)}
 }
