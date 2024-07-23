@@ -8,14 +8,13 @@ import (
 	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/knownhosts"
-	"neite.dev/go-ship/internal/config"
 )
 
 type Client struct {
 	conn *ssh.Client
 }
 
-func NewConnection(cfg *config.UserConfig) (*Client, error) {
+func NewConnection(addr string, port int64) (*Client, error) {
 	homedir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
@@ -43,8 +42,8 @@ func NewConnection(cfg *config.UserConfig) (*Client, error) {
 		HostKeyCallback: hostkeyCallback,
 	}
 
-	addr := formatAddress(cfg.Servers[0], cfg.SSH.Port)
-	conn, err := ssh.Dial("tcp", addr, config)
+	dsn := formatAddress(addr, port)
+	conn, err := ssh.Dial("tcp", dsn, config)
 	if err != nil {
 		return nil, err
 	}

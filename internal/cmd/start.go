@@ -25,7 +25,7 @@ var startCmd = &cobra.Command{
 			return
 		}
 
-		sshClient, err := ssh.NewConnection(cfg)
+		sshClient, err := ssh.NewConnection(cfg.Servers[0], cfg.SSH.Port)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to establish connection with remote server: %s", cfg.Servers[0])
 			fmt.Fprint(os.Stderr, err)

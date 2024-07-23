@@ -75,7 +75,7 @@ var setupCmd = &cobra.Command{
 		}
 
 		// setup connection with server
-		client, err := ssh.NewConnection(userCfg)
+		client, err := ssh.NewConnection(userCfg.Servers[0], userCfg.SSH.Port)
 		if err != nil {
 			fmt.Println("error establishing connection with server.")
 			fmt.Println(err)

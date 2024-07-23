@@ -71,7 +71,7 @@ var rollbackCmd = &cobra.Command{
 		imgName := fmt.Sprintf("%s/%s:%s", userCfg.Registry.Username, userCfg.Image, commitHash)
 
 		// pull from hub with version tag
-		client, err := ssh.NewConnection(userCfg)
+		client, err := ssh.NewConnection(userCfg.Servers[0], userCfg.SSH.Port)
 		if err != nil {
 			fmt.Println("error establishing connection with server.")
 			return
