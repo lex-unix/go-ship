@@ -38,15 +38,14 @@ services:
             - 3000:3000
 
     deployer:
+        privileged: true
         build:
             context: docker/deployer
             dockerfile: Dockerfile
-        privileged: true
         volumes:
             - ../..:/go-ship
             - shared:/shared
             - registry:/registry
-            - docker-cache:/var/lib/docker
         networks:
             - app-network
         depends_on:
@@ -78,4 +77,3 @@ networks:
 volumes:
     shared:
     registry:
-    docker-cache:
