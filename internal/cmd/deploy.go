@@ -29,7 +29,7 @@ var deployCmd = &cobra.Command{
 			return
 		}
 
-		if err := r.RunRemoteContainer(); err != nil {
+		if err := r.LatestRemoteContainer(); err != nil {
 			fmt.Fprint(os.Stderr, err)
 			return
 		}
