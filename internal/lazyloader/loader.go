@@ -11,7 +11,7 @@ type Loader[T any] struct {
 	err    error
 }
 
-func Load[T any](loader loader[T]) *Loader[T] {
+func New[T any](loader loader[T]) *Loader[T] {
 	return &Loader[T]{
 		once:   &sync.Once{},
 		loader: loader,
@@ -19,7 +19,7 @@ func Load[T any](loader loader[T]) *Loader[T] {
 	}
 }
 
-func (l *Loader[T]) Get() T {
+func (l *Loader[T]) Load() T {
 	l.once.Do(func() {
 		data, err := l.loader()
 		l.data = data

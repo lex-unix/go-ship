@@ -21,7 +21,7 @@ func New() (*runner, error) {
 		return nil, fmt.Errorf("Unable to read `goship.yaml` file: %s", err)
 	}
 
-	sshClients := lazyloader.Load(func() ([]*ssh.Client, error) {
+	sshClients := lazyloader.New(func() ([]*ssh.Client, error) {
 		sshClients := make([]*ssh.Client, 0, len(cfg.Servers))
 		for _, server := range cfg.Servers {
 			client, err := ssh.NewConnection(server, cfg.SSH.Port)
@@ -38,7 +38,7 @@ func New() (*runner, error) {
 }
 
 func (g *runner) CloseClients() {
-	for _, client := range g.sshClients.Get() {
+	for _, client := range g.sshClients.Load() {
 		client.Close()
 	}
 }
@@ -83,13 +83,13 @@ func (r *runner) RunRemoteContainer(version string) error {
 	registryImg := fmt.Sprintf("%s/%s", r.config.Registry.Server, imgWithTag)
 
 	// TODO: should check for image on the remote first before pulling from registry
-	err := docker.PullFromHub(registryImg).RunSSH(r.sshClients.Get()[0])
+	err := docker.PullFromHub(registryImg).RunSSH(r.sshClients.Load()[0])
 	if err != nil {
 		return fmt.Errorf("Unable to pull image from the registry: %s", err)
 
 	}
 
-	err = docker.RunContainer(3000, r.config.Service, registryImg).RunSSH(r.sshClients.Get()[0])
+	err = docker.RunContainer(3000, r.config.Service, registryImg).RunSSH(r.sshClients.Load()[0])
 	if err != nil {
 		return fmt.Errorf("Could not run your container on the server: %s", err)
 	}
@@ -98,7 +98,7 @@ func (r *runner) RunRemoteContainer(version string) error {
 }
 
 func (r *runner) RemoveRunningContainer() error {
-	clients := r.sshClients.Get()
+	clients := r.sshClients.Load()
 	if err := r.sshClients.Error(); err != nil {
 		return fmt.Errorf("Could not establish to connection to the server %s", err)
 	}
@@ -117,7 +117,7 @@ func (r *runner) RemoveRunningContainer() error {
 }
 
 func (r *runner) IntstallDocker() error {
-	clients := r.sshClients.Get()
+	clients := r.sshClients.Load()
 	if err := r.sshClients.Error(); err != nil {
 		return fmt.Errorf("Could not establish to connection to the server %s", err)
 	}
