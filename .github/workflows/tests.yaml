@@ -6,19 +6,16 @@ on:
     branches: ["main"]
 
 jobs:
-  tests:
+  integration-tests:
     runs-on: ubuntu-latest
     continue-on-error: true
-    strategy:
-      matrix:
-        go-version: ["1.21", "1.22.x"]
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version-file: "go.mod"
 
       - name: Install dependencies
         run: go mod download
