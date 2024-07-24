@@ -3,10 +3,13 @@ package integration
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os/exec"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -14,28 +17,29 @@ const (
 	WAIT_TIME = 5 * time.Second
 )
 
-func dockerCompose(t *testing.T, composeCmd string) {
+func dockerCompose(t *testing.T, composeCmd string) string {
 	t.Helper()
 
 	cmd := exec.Command("sh", "-c", fmt.Sprintf("docker compose %s", composeCmd))
-	if out, err := cmd.Output(); err != nil {
-		var reason []byte
+	err := cmd.Run()
+	if err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
-			reason = (exitErr.Stderr)
+			t.Fatalf("command `docker compose %s` failed: %s\n%s", composeCmd, err, string(exitErr.Stderr))
 		} else {
-			reason = out
+			t.Fatalf("command `docker compose %s` failed: %s", composeCmd, err)
 		}
-		t.Fatalf("command `docker compose %s` failed: %s\n%s", composeCmd, err, string(reason))
 	}
+
+	return ""
 }
 
-func deployerExec(t *testing.T, cmd string, workdir string) {
-	dockerCompose(t, fmt.Sprintf("exec --workdir %s deployer %s", workdir, cmd))
+func deployerExec(t *testing.T, cmd string, workdir string) string {
+	return dockerCompose(t, fmt.Sprintf("exec --workdir %s deployer %s", workdir, cmd))
 }
 
-func goship(t *testing.T, cmd string) {
-	deployerExec(t, fmt.Sprintf("goship %s", cmd), "/app")
+func goship(t *testing.T, cmd string) string {
+	return deployerExec(t, fmt.Sprintf("goship %s", cmd), "/app")
 }
 
 func setup(t *testing.T) {
@@ -46,8 +50,8 @@ func setup(t *testing.T) {
 	t.Log("Setup successful")
 
 	t.Cleanup(func() {
-		dockerCompose(t, "down -t 1")
 		t.Log("Cleaning up docker compose project")
+		dockerCompose(t, "down -t 1")
 	})
 }
 
@@ -84,4 +88,15 @@ func waitForApp(t *testing.T, maxRetry int, waitTime time.Duration) {
 
 func appIsDown(_ *testing.T) bool {
 	return true
+}
+
+func getLatestAppVersion(t *testing.T) string {
+	res := appResponse(t)
+	body, _ := io.ReadAll(res.Body)
+	res.Body.Close()
+	return string(body)
+}
+
+func assertOkResponse(t *testing.T, res *http.Response) {
+	assert.True(t, res.StatusCode == http.StatusOK, "response status code != 200")
 }

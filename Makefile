@@ -60,7 +60,7 @@ test/cover:
 ## test/integration: run all integration tests
 .PHONY: test/integration
 test/integration:
-	go test -v -race -buildvcs  ./test/integration/...
+	go test -v -race -buildvcs -count=1  ./test/integration/...
 
 ## build: build the application
 .PHONY: build

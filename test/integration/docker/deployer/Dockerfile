@@ -28,5 +28,6 @@ RUN mkdir -p /etc/docker/certs.d/registry:4443 && ln -s /shared/certs/domain.crt
 RUN git config --global user.email "deployer@goship.dev"
 RUN git config --global user.name "Deployer"
 RUN cd app && git init && git add . && git commit -m "feat: initial commit"
+RUN cd app && git rev-parse --short HEAD > version.txt
 
 CMD ["./boot.sh"]
