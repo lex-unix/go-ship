@@ -3,7 +3,6 @@ package runner
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"neite.dev/go-ship/internal/config"
 	"neite.dev/go-ship/internal/docker"
@@ -53,19 +52,16 @@ func (r *runner) PrepareImgForRemote() error {
 	imgWithTag := fmt.Sprintf("%s:%s", r.config.Image, appVersion)
 	registryImg := fmt.Sprintf("%s/%s", r.config.Registry.Server, imgWithTag)
 
-	fmt.Fprint(os.Stdout, ">>>>>>>building image\n")
 	err = docker.BuildImage(imgWithTag, r.config.Dockerfile).Run()
 	if err != nil {
 		return fmt.Errorf("Unable to build image: %s", err)
 	}
 
-	fmt.Fprint(os.Stdout, ">>>>>>>tagging image\n")
 	err = docker.Tag(imgWithTag, registryImg).Run()
 	if err != nil {
 		return fmt.Errorf("Unable to tag image: %s", err)
 	}
 
-	fmt.Fprint(os.Stdout, ">>>>>>>pushing to hub\n")
 	err = docker.PushToHub(registryImg).Run()
 	if err != nil {
 		return fmt.Errorf("Unable to push built image to registry: %s", err)
