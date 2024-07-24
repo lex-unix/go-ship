@@ -39,7 +39,7 @@ func deployerExec(t *testing.T, cmd string, workdir string) string {
 }
 
 func goship(t *testing.T, cmd string) string {
-	return deployerExec(t, fmt.Sprintf("goship %s", cmd), "/app")
+	return deployerExec(t, fmt.Sprintf("/usr/local/bin/goship %s", cmd), "/app")
 }
 
 func setup(t *testing.T) {
