@@ -2,6 +2,7 @@ package ssh
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path"
 
@@ -59,27 +60,14 @@ func (c *Client) NewSFTPClient() (*SFTPClient, error) {
 	return &SFTPClient{conn: client}, nil
 }
 
-func (c *Client) NewSession(opts ...sshOption) (*Session, error) {
-	var options sessionOptions
-	for _, opt := range opts {
-		err := opt(&options)
-		if err != nil {
-			return nil, err
-		}
-	}
-
+func (c *Client) NewSession(stdout, stderr io.Writer) (*Session, error) {
 	sshSess, err := c.conn.NewSession()
 	if err != nil {
 		return nil, err
 	}
 
-	if options.stdout != nil {
-		sshSess.Stdout = options.stdout
-	}
-
-	if options.stderr != nil {
-		sshSess.Stderr = options.stderr
-	}
+	sshSess.Stdout = stdout
+	sshSess.Stderr = stderr
 
 	session := Session{
 		sshSess: sshSess,

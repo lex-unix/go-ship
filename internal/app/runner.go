@@ -1,109 +1,83 @@
 package app
 
 import (
-	"fmt"
 	"io"
 	"os/exec"
 
 	"neite.dev/go-ship/internal/ssh"
 )
 
-type options struct {
-	overSSH   bool
-	out       io.Writer
-	stdout    io.Writer
-	stderr    io.Writer
-	sshClient *ssh.Client
+type runneropts struct {
+	client *ssh.Client
+	stdout io.Writer
+	stderr io.Writer
 }
 
-type option func(opts *options) error
+type runneropt func(opts *runneropts) error
 
-func withOut(out io.Writer) option {
-	return func(opts *options) error {
-		opts.out = out
+type runner struct {
+	client *ssh.Client
+	stdout io.Writer
+	stderr io.Writer
+}
+
+func withStdout(stdout io.Writer) runneropt {
+	return func(opts *runneropts) error {
+		opts.stderr = stdout
 		return nil
 	}
 }
 
-func withStdout(stdout io.Writer) option {
-	return func(opts *options) error {
-		opts.stdout = stdout
+func withClient(client *ssh.Client) runneropt {
+	return func(opts *runneropts) error {
+		opts.client = client
 		return nil
 	}
 }
 
-func withStderr(stderr io.Writer) option {
-	return func(opts *options) error {
+func withStderr(stderr io.Writer) runneropt {
+	return func(opts *runneropts) error {
 		opts.stderr = stderr
 		return nil
 	}
 }
 
-func withSSHClient(client *ssh.Client) option {
-	return func(opts *options) error {
-		opts.overSSH = true
-		opts.sshClient = client
-		return nil
-	}
-}
-
-func buildOpts(opts ...option) (*options, error) {
-	var options options
+func initRunner(opts ...runneropt) (*runner, error) {
+	var options runneropts
 	for _, opt := range opts {
 		err := opt(&options)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return &options, nil
+
+	var r runner
+	r.client = options.client
+	r.stdout = options.stdout
+	r.stderr = options.stderr
+
+	return &r, nil
 }
 
-func run(cmd string, opts ...option) error {
-	options, _ := buildOpts(opts...)
-
-	if options.overSSH {
-		return runOverSSH(cmd, options)
-	} else {
-		return runLocally(cmd, options)
-	}
-}
-
-func runLocally(subcmd string, options *options) error {
-	cmd := exec.Command("sh", "-c", subcmd)
-	if options.out != nil {
-		cmd.Stdout = options.out
-		cmd.Stderr = options.out
-	}
+func (r *runner) local(arg string) error {
+	cmd := exec.Command("sh", "-c", arg)
+	cmd.Stderr = r.stdout
+	cmd.Stderr = r.stderr
 	if err := cmd.Run(); err != nil {
 		return err
 	}
-
 	return nil
 }
 
-func runOverSSH(subcmd string, options *options) error {
-	client := options.sshClient
-
-	var session *ssh.Session
-	var err error
-	if options.out != nil {
-		session, err = client.NewSession(ssh.WithStderr(options.out), ssh.WithStdout(options.out))
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
-	} else {
-		session, err = client.NewSession()
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
-	}
-
-	err = session.Run(subcmd)
+func (r *runner) overSSH(cmd string) error {
+	session, err := r.client.NewSession(r.stdout, r.stderr)
 	if err != nil {
 		return err
 	}
+	defer session.Close()
 
+	if err := session.Run(cmd); err != nil {
+		return err
+	}
 	return nil
 }

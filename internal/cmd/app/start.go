@@ -22,7 +22,7 @@ var startCmd = &cobra.Command{
 			return
 		}
 
-		if err := app.StopContainer(); err != nil {
+		if err := app.StartContainer(); err != nil {
 			fmt.Fprint(os.Stderr, err)
 			return
 

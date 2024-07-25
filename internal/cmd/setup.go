@@ -30,7 +30,7 @@ var setupCmd = &cobra.Command{
 			return
 		}
 
-		if err := app.IntstallDocker(); err != nil {
+		if err := app.InstallDocker(); err != nil {
 			fmt.Fprint(os.Stderr, err)
 			return
 		}
