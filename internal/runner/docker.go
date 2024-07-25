@@ -1,10 +1,11 @@
 package runner
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
-	"neite.dev/go-ship/internal/docker"
+	"neite.dev/go-ship/internal/commands"
 	"neite.dev/go-ship/internal/ssh"
 )
 
@@ -17,17 +18,17 @@ func (r *runner) PrepareImgForRemote() error {
 	imgWithTag := fmt.Sprintf("%s:%s", r.config.Image, appVersion)
 	registryImg := fmt.Sprintf("%s/%s", r.config.Registry.Server, imgWithTag)
 
-	err = docker.BuildImage(imgWithTag, r.config.Dockerfile).Run()
+	err = run(commands.Docker("build -t", imgWithTag, r.config.Dockerfile))
 	if err != nil {
 		return fmt.Errorf("Unable to build image: %s", err)
 	}
 
-	err = docker.Tag(imgWithTag, registryImg).Run()
+	err = run(commands.Docker("tag", imgWithTag, registryImg))
 	if err != nil {
 		return fmt.Errorf("Unable to tag image: %s", err)
 	}
 
-	err = docker.PushToHub(registryImg).Run()
+	err = run(commands.Docker("push", registryImg))
 	if err != nil {
 		return fmt.Errorf("Unable to push built image to registry: %s", err)
 	}
@@ -47,14 +48,23 @@ func (r *runner) RunRemoteContainer(version string) error {
 	imgWithTag := fmt.Sprintf("%s:%s", r.config.Image, version)
 	registryImg := fmt.Sprintf("%s/%s", r.config.Registry.Server, imgWithTag)
 
+	clients := r.sshClients.Load()
+	if err := r.sshClients.Error(); err != nil {
+		return fmt.Errorf("Could not establish to connection to the server %s", err)
+	}
+
 	// TODO: should check for image on the remote first before pulling from registry
-	err := docker.PullFromHub(registryImg).RunSSH(r.sshClients.Load()[0])
+	err := run(commands.Docker("pull", registryImg), withSSHClient(clients[0]))
 	if err != nil {
 		return fmt.Errorf("Unable to pull image from the registry: %s", err)
 
 	}
 
-	err = docker.RunContainer(3000, r.config.Service, registryImg).RunSSH(r.sshClients.Load()[0])
+	portMap := fmt.Sprintf("%d:%d", 3000, 3000)
+	err = run(
+		commands.Docker("run", "-d", "-p", portMap, "--name", r.config.Service, registryImg),
+		withSSHClient(clients[0]),
+	)
 	if err != nil {
 		return fmt.Errorf("Could not run your container on the server: %s", err)
 	}
@@ -68,12 +78,12 @@ func (r *runner) RemoveRunningContainer() error {
 		return fmt.Errorf("Could not establish to connection to the server %s", err)
 	}
 
-	err := docker.StopContainer(r.config.Service).RunSSH(clients[0])
+	err := run(commands.Docker("stop", r.config.Service), withSSHClient(clients[0]))
 	if err != nil {
 		return fmt.Errorf("Unable to stop your container on the server: %s", err)
 	}
 
-	err = docker.RemoveContainer(r.config.Service).RunSSH(clients[0])
+	err = run(commands.Docker("rm", r.config.Service), withSSHClient(clients[0]))
 	if err != nil {
 		return fmt.Errorf("Unable to delete your container on the server: %s", err)
 	}
@@ -87,7 +97,7 @@ func (r *runner) IntstallDocker() error {
 		return fmt.Errorf("Could not establish to connection to the server %s", err)
 	}
 
-	err := docker.IsInstalled().RunSSH(clients[0])
+	err := run(commands.IsDockerInstalled(), withSSHClient(clients[0]))
 	if err != nil {
 		switch {
 		// command `docker` could not be found meaning the docker is not installed
@@ -101,6 +111,48 @@ func (r *runner) IntstallDocker() error {
 
 			return fmt.Errorf("Unable not check if Docker is intsalled on the server: %s", err)
 		}
+	}
+	return nil
+}
+
+func (r *runner) ShowContainers() (string, error) {
+	clients := r.sshClients.Load()
+	if err := r.sshClients.Error(); err != nil {
+		return "", fmt.Errorf("Could not establish to connection to the server %s", err)
+	}
+
+	var out bytes.Buffer
+	err := run(commands.Docker("ps"), withSSHClient(clients[0]), withOut(&out))
+	if err != nil {
+		return out.String(), err
+	}
+
+	return out.String(), nil
+}
+
+func (r *runner) StopContainer() error {
+	clients := r.sshClients.Load()
+	if err := r.sshClients.Error(); err != nil {
+		return fmt.Errorf("Could not establish to connection to the server %s", err)
+	}
+
+	err := run(commands.Docker("ps"), withSSHClient(clients[0]))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *runner) StartContainer() error {
+	clients := r.sshClients.Load()
+	if err := r.sshClients.Error(); err != nil {
+		return fmt.Errorf("Could not establish to connection to the server %s", err)
+	}
+
+	err := run(commands.Docker("start", r.config.Service), withSSHClient(clients[0]))
+	if err != nil {
+		return err
 	}
 	return nil
 }

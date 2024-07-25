@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -20,18 +21,22 @@ const (
 func dockerCompose(t *testing.T, composeCmd string) string {
 	t.Helper()
 
+	var buff bytes.Buffer
+
 	cmd := exec.Command("sh", "-c", fmt.Sprintf("docker compose %s", composeCmd))
+	cmd.Stderr = &buff
+	cmd.Stdout = &buff
 	err := cmd.Run()
 	if err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
-			t.Fatalf("command `docker compose %s` failed: %s\n%s", composeCmd, err, string(exitErr.Stderr))
+			t.Fatalf("command `docker compose %s` failed: %s\n%s", composeCmd, err, buff.String())
 		} else {
-			t.Fatalf("command `docker compose %s` failed: %s", composeCmd, err)
+			t.Fatalf("command `docker compose %s` failed: %s\n%s", composeCmd, err, buff.String())
 		}
 	}
 
-	return ""
+	return buff.String()
 }
 
 func deployerExec(t *testing.T, cmd string, workdir string) string {
