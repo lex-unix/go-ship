@@ -1,4 +1,4 @@
-package runner
+package app
 
 import (
 	"bytes"
@@ -9,16 +9,16 @@ import (
 	"neite.dev/go-ship/internal/ssh"
 )
 
-func (r *runner) PrepareImgForRemote() error {
+func (a *app) PrepareImgForRemote() error {
 	appVersion, err := latestCommitHash()
 	if err != nil {
 		return fmt.Errorf("Unable to get most recent commit hash: %s", err)
 	}
 
-	imgWithTag := fmt.Sprintf("%s:%s", r.config.Image, appVersion)
-	registryImg := fmt.Sprintf("%s/%s", r.config.Registry.Server, imgWithTag)
+	imgWithTag := fmt.Sprintf("%s:%s", a.config.Image, appVersion)
+	registryImg := fmt.Sprintf("%s/%s", a.config.Registry.Server, imgWithTag)
 
-	err = run(commands.Docker("build -t", imgWithTag, r.config.Dockerfile))
+	err = run(commands.Docker("build -t", imgWithTag, a.config.Dockerfile))
 	if err != nil {
 		return fmt.Errorf("Unable to build image: %s", err)
 	}
@@ -36,20 +36,20 @@ func (r *runner) PrepareImgForRemote() error {
 	return nil
 }
 
-func (r *runner) LatestRemoteContainer() error {
+func (a *app) LatestRemoteContainer() error {
 	appVersion, err := latestCommitHash()
 	if err != nil {
 		return fmt.Errorf("Unable to get most recent commit hash: %s", err)
 	}
-	return r.RunRemoteContainer(appVersion)
+	return a.RunRemoteContainer(appVersion)
 }
 
-func (r *runner) RunRemoteContainer(version string) error {
-	imgWithTag := fmt.Sprintf("%s:%s", r.config.Image, version)
-	registryImg := fmt.Sprintf("%s/%s", r.config.Registry.Server, imgWithTag)
+func (a *app) RunRemoteContainer(version string) error {
+	imgWithTag := fmt.Sprintf("%s:%s", a.config.Image, version)
+	registryImg := fmt.Sprintf("%s/%s", a.config.Registry.Server, imgWithTag)
 
-	clients := r.sshClients.Load()
-	if err := r.sshClients.Error(); err != nil {
+	clients := a.sshClients.Load()
+	if err := a.sshClients.Error(); err != nil {
 		return fmt.Errorf("Could not establish to connection to the server %s", err)
 	}
 
@@ -62,7 +62,7 @@ func (r *runner) RunRemoteContainer(version string) error {
 
 	portMap := fmt.Sprintf("%d:%d", 3000, 3000)
 	err = run(
-		commands.Docker("run", "-d", "-p", portMap, "--name", r.config.Service, registryImg),
+		commands.Docker("run", "-d", "-p", portMap, "--name", a.config.Service, registryImg),
 		withSSHClient(clients[0]),
 	)
 	if err != nil {
@@ -72,18 +72,18 @@ func (r *runner) RunRemoteContainer(version string) error {
 	return nil
 }
 
-func (r *runner) RemoveRunningContainer() error {
-	clients := r.sshClients.Load()
-	if err := r.sshClients.Error(); err != nil {
+func (a *app) RemoveRunningContainer() error {
+	clients := a.sshClients.Load()
+	if err := a.sshClients.Error(); err != nil {
 		return fmt.Errorf("Could not establish to connection to the server %s", err)
 	}
 
-	err := run(commands.Docker("stop", r.config.Service), withSSHClient(clients[0]))
+	err := run(commands.Docker("stop", a.config.Service), withSSHClient(clients[0]))
 	if err != nil {
 		return fmt.Errorf("Unable to stop your container on the server: %s", err)
 	}
 
-	err = run(commands.Docker("rm", r.config.Service), withSSHClient(clients[0]))
+	err = run(commands.Docker("rm", a.config.Service), withSSHClient(clients[0]))
 	if err != nil {
 		return fmt.Errorf("Unable to delete your container on the server: %s", err)
 	}
@@ -91,9 +91,9 @@ func (r *runner) RemoveRunningContainer() error {
 	return nil
 }
 
-func (r *runner) IntstallDocker() error {
-	clients := r.sshClients.Load()
-	if err := r.sshClients.Error(); err != nil {
+func (a *app) IntstallDocker() error {
+	clients := a.sshClients.Load()
+	if err := a.sshClients.Error(); err != nil {
 		return fmt.Errorf("Could not establish to connection to the server %s", err)
 	}
 
@@ -115,9 +115,9 @@ func (r *runner) IntstallDocker() error {
 	return nil
 }
 
-func (r *runner) ShowContainers() (string, error) {
-	clients := r.sshClients.Load()
-	if err := r.sshClients.Error(); err != nil {
+func (a *app) ShowContainers() (string, error) {
+	clients := a.sshClients.Load()
+	if err := a.sshClients.Error(); err != nil {
 		return "", fmt.Errorf("Could not establish to connection to the server %s", err)
 	}
 
@@ -130,9 +130,9 @@ func (r *runner) ShowContainers() (string, error) {
 	return out.String(), nil
 }
 
-func (r *runner) StopContainer() error {
-	clients := r.sshClients.Load()
-	if err := r.sshClients.Error(); err != nil {
+func (a *app) StopContainer() error {
+	clients := a.sshClients.Load()
+	if err := a.sshClients.Error(); err != nil {
 		return fmt.Errorf("Could not establish to connection to the server %s", err)
 	}
 
@@ -144,13 +144,13 @@ func (r *runner) StopContainer() error {
 	return nil
 }
 
-func (r *runner) StartContainer() error {
-	clients := r.sshClients.Load()
-	if err := r.sshClients.Error(); err != nil {
+func (a *app) StartContainer() error {
+	clients := a.sshClients.Load()
+	if err := a.sshClients.Error(); err != nil {
 		return fmt.Errorf("Could not establish to connection to the server %s", err)
 	}
 
-	err := run(commands.Docker("start", r.config.Service), withSSHClient(clients[0]))
+	err := run(commands.Docker("start", a.config.Service), withSSHClient(clients[0]))
 	if err != nil {
 		return err
 	}

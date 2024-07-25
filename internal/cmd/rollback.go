@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"neite.dev/go-ship/internal/runner"
+	"neite.dev/go-ship/internal/app"
 )
 
 func init() {
@@ -21,22 +21,22 @@ var rollbackCmd = &cobra.Command{
 			return
 		}
 
-		commitHash := args[0]
+		appVersion := args[0]
 
-		r, err := runner.New()
+		app, err := app.New()
 		if err != nil {
 			fmt.Fprint(os.Stderr, err)
 			return
 		}
 
-		defer r.CloseClients()
+		defer app.CloseClients()
 
-		if err := r.RemoveRunningContainer(); err != nil {
+		if err := app.RemoveRunningContainer(); err != nil {
 			fmt.Fprint(os.Stderr, err)
 			return
 		}
 
-		if err := r.RunRemoteContainer(commitHash); err != nil {
+		if err := app.RunRemoteContainer(appVersion); err != nil {
 			fmt.Fprint(os.Stderr, err)
 			return
 		}

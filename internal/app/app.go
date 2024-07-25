@@ -1,4 +1,4 @@
-package runner
+package app
 
 import (
 	"fmt"
@@ -8,12 +8,12 @@ import (
 	"neite.dev/go-ship/internal/ssh"
 )
 
-type runner struct {
+type app struct {
 	config     *config.UserConfig
 	sshClients *lazyloader.Loader[[]*ssh.Client]
 }
 
-func New() (*runner, error) {
+func New() (*app, error) {
 	cfg, err := config.ReadConfig()
 	if err != nil {
 		return nil, fmt.Errorf("Unable to read `goship.yaml` file: %s", err)
@@ -32,11 +32,11 @@ func New() (*runner, error) {
 		return sshClients, nil
 	})
 
-	return &runner{config: cfg, sshClients: sshClients}, nil
+	return &app{config: cfg, sshClients: sshClients}, nil
 }
 
-func (g *runner) CloseClients() {
-	for _, client := range g.sshClients.Load() {
+func (a *app) CloseClients() {
+	for _, client := range a.sshClients.Load() {
 		client.Close()
 	}
 }
