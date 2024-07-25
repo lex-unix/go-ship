@@ -5,7 +5,12 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"neite.dev/go-ship/internal/cmd/app"
 )
+
+func init() {
+	rootCmd.AddCommand(app.AppCmd)
+}
 
 var rootCmd = &cobra.Command{
 	Use:  "goship",

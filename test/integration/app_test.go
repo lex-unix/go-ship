@@ -14,16 +14,16 @@ func TestStartStop(t *testing.T) {
 	waitForApp(t, MAX_RETRY, WAIT_TIME)
 	assertOkResponse(t, appResponse(t))
 
-	t.Log("Stopping container (running `goship stop`)")
+	t.Log("Stopping container (running `goship app stop`)")
 
-	goship(t, "stop")
+	goship(t, "app stop")
 	if !appIsDown(t) {
 		t.Fatal("`goship stop` failed to stop the container")
 	}
 
-	t.Log("Starting container (running `goship start`)")
+	t.Log("Starting container (running `goship app start`)")
 
-	goship(t, "start")
+	goship(t, "app start")
 	waitForApp(t, MAX_RETRY, WAIT_TIME)
 	assertOkResponse(t, appResponse(t))
 }

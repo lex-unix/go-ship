@@ -1,4 +1,4 @@
-package cmd
+package app
 
 import (
 	"fmt"
@@ -11,12 +11,12 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(startCmd)
+	AppCmd.AddCommand(startCmd)
 }
 
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start app on servers",
+	Short: "Start app container on servers",
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg, err := config.ReadConfig()
 		if err != nil {
