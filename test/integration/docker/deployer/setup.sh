@@ -15,6 +15,7 @@ push_to_registry() {
 }
 
 push_to_registry node 20.15.1-slim
+push_to_registry traefik v3.1
 
 rm -f /root/.ssh/known_hosts
 ssh-keyscan -H vm1 >> /root/.ssh/known_hosts

@@ -3,6 +3,7 @@ package runner
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"neite.dev/go-ship/internal/commands"
 	"neite.dev/go-ship/internal/ssh"
@@ -48,8 +49,9 @@ func (r *runner) RunRemoteContainer(version string) error {
 		return fmt.Errorf("unable to pull image from the registry: %w", err)
 	}
 
-	portMap := fmt.Sprintf("%d:%d", 3000, 3000)
-	if err := r.runOverSSH(commands.Docker("run", "-d", "-p", portMap, "--name", r.config.Service, registryImg)); err != nil {
+	labels := []string{"--label traefik.enable=true", "--label traefik.http.routers.myapp.entrypoints=web", "--label traefik.http.routers.myapp.rule=\"PathPrefix(\\`/\\`)\""}
+
+	if err := r.runOverSSH(commands.Docker("run", "-d", strings.Join(labels, " "), "--name", r.config.Service, registryImg)); err != nil {
 		return fmt.Errorf("could not run your container on the server: %w", err)
 	}
 

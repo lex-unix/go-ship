@@ -79,10 +79,7 @@ func waitForHealthy(t *testing.T, maxRetry int, waitTime time.Duration) {
 }
 
 func appResponse() *http.Response {
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-	res, err := client.Get("http://localhost:3000/")
+	res, err := http.Get("http://localhost:3000/")
 	if err != nil {
 		return nil
 	}
