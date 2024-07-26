@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -50,6 +51,7 @@ func goship(t *testing.T, cmd string) string {
 func setup(t *testing.T) {
 	t.Log("Setting up docker compose project")
 	dockerCompose(t, "up -d --build")
+	waitForHealthy(t, MAX_RETRY, WAIT_TIME)
 	t.Log("Setting up deployer container")
 	setupDeployer(t)
 	t.Log("Setup successful")
@@ -64,44 +66,59 @@ func setupDeployer(t *testing.T) {
 	deployerExec(t, "./setup.sh", "/")
 }
 
-func appResponse(t *testing.T) *http.Response {
+func waitForHealthy(t *testing.T, maxRetry int, waitTime time.Duration) {
+	for i := 0; i < maxRetry; i++ {
+		out := dockerCompose(t, "ps -a | tail -n +2 | grep -v '(healthy)' | wc -l")
+		out = strings.TrimSpace(out)
+		if out == "0" {
+			return
+		}
+		time.Sleep(waitTime)
+	}
+	t.FailNow()
+}
+
+func appResponse() *http.Response {
 	client := &http.Client{
 		Timeout: 10 * time.Second,
 	}
-	res, err := client.Get("http://localhost:3001/")
+	res, err := client.Get("http://localhost:3000/")
 	if err != nil {
-		t.Logf("appResponse() failed: %s", err)
 		return nil
 	}
 	return res
 }
 
 func waitForApp(t *testing.T, maxRetry int, waitTime time.Duration) {
-	for i := 0; i < maxRetry; i++ {
-		t.Logf("Attempt %d of %d", i+1, maxRetry)
-		res := appResponse(t)
+	total := 2
+	up := 0
+	for i := 0; i < maxRetry && up != total; i++ {
+		res := appResponse()
 		if res != nil && res.StatusCode == http.StatusOK {
-			t.Logf("App is ready")
-			return
+			up++
 		}
-		t.Logf("App not ready, waiting %s", waitTime)
 		time.Sleep(waitTime)
 	}
-
-	t.Fatal("App failed to become ready")
+	assert.Equal(t, total, up, "app failed to become ready")
 }
 
-func appIsDown(_ *testing.T) bool {
-	return true
+func assertAppIsDown(t *testing.T) {
+	res := appResponse()
+	assert.Equal(t, http.StatusBadGateway, res.StatusCode, "expected app to be down")
 }
 
-func getLatestAppVersion(t *testing.T) string {
-	res := appResponse(t)
+func assertAppIsUp(t *testing.T) {
+	res := appResponse()
+	assert.Equal(t, http.StatusOK, res.StatusCode, "expected app to be up")
+}
+
+func assertAppVersion(t *testing.T, want, got string) {
+	assert.Equal(t, want, got)
+}
+
+func getAppVersion() string {
+	res := appResponse()
 	body, _ := io.ReadAll(res.Body)
 	res.Body.Close()
 	return string(body)
-}
-
-func assertOkResponse(t *testing.T, res *http.Response) {
-	assert.True(t, res.StatusCode == http.StatusOK, "response status code != 200")
 }

@@ -66,8 +66,8 @@ func (c *Client) NewSession(stdout, stderr io.Writer) (*Session, error) {
 		return nil, err
 	}
 
-	sshSess.Stdout = stdout
-	sshSess.Stderr = stderr
+	sshSess.Stdout = os.Stdout
+	sshSess.Stderr = os.Stderr
 
 	session := Session{
 		sshSess: sshSess,

@@ -49,17 +49,12 @@ func (a *app) RunRemoteContainer(version string) error {
 	imgWithTag := fmt.Sprintf("%s:%s", a.config.Image, version)
 	registryImg := fmt.Sprintf("%s/%s", a.config.Registry.Server, imgWithTag)
 
-	r, err := a.newSSHRunner()
-	if err != nil {
-		return err
-	}
-
-	if err := r.overSSH(commands.Docker("pull", registryImg)); err != nil {
+	if err := a.runOverSSH(commands.Docker("pull", registryImg)); err != nil {
 		return fmt.Errorf("unable to pull image from the registry: %w", err)
 	}
 
 	portMap := fmt.Sprintf("%d:%d", 3000, 3000)
-	if err := r.overSSH(commands.Docker("run", "-d", "-p", portMap, "--name", a.config.Service, registryImg)); err != nil {
+	if err := a.runOverSSH(commands.Docker("run", "-d", "-p", portMap, "--name", a.config.Service, registryImg)); err != nil {
 		return fmt.Errorf("could not run your container on the server: %w", err)
 	}
 
@@ -67,16 +62,11 @@ func (a *app) RunRemoteContainer(version string) error {
 }
 
 func (a *app) RemoveRunningContainer() error {
-	r, err := a.newSSHRunner()
-	if err != nil {
-		return err
-	}
-
-	if err := r.overSSH(commands.Docker("stop", a.config.Service)); err != nil {
+	if err := a.runOverSSH(commands.Docker("stop", a.config.Service)); err != nil {
 		return fmt.Errorf("unable to stop your container on the server: %w", err)
 	}
 
-	if err := r.overSSH(commands.Docker("rm", a.config.Service)); err != nil {
+	if err := a.runOverSSH(commands.Docker("rm", a.config.Service)); err != nil {
 		return fmt.Errorf("unable to delete your container on the server: %w", err)
 	}
 
@@ -100,27 +90,15 @@ func (a *app) InstallDocker() error {
 }
 
 func (a *app) ShowContainers() error {
-	r, err := a.newSSHRunner()
-	if err != nil {
-		return err
-	}
-	return r.overSSH(commands.Docker("ps"))
+	return a.runOverSSH(commands.Docker("ps"))
 }
 
 func (a *app) StopContainer() error {
-	r, err := a.newSSHRunner()
-	if err != nil {
-		return err
-	}
-	return r.overSSH(commands.Docker("stop", a.config.Service))
+	return a.runOverSSH(commands.Docker("stop", a.config.Service))
 }
 
 func (a *app) StartContainer() error {
-	r, err := a.newSSHRunner()
-	if err != nil {
-		return err
-	}
-	return r.overSSH(commands.Docker("start", a.config.Service))
+	return a.runOverSSH(commands.Docker("start", a.config.Service))
 }
 
 func (a *app) newLocalRunner() (*runner, error) {

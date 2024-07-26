@@ -20,8 +20,6 @@ services:
             - app-network
         depends_on:
             - shared
-        ports:
-            - 3001:3000
 
     vm2:
         privileged: true
@@ -34,8 +32,6 @@ services:
             - app-network
         depends_on:
             - shared
-        ports:
-            - 3000:3000
 
     deployer:
         privileged: true
@@ -67,6 +63,18 @@ services:
             - registry:/var/lib/registry/
         depends_on:
             - shared
+        networks:
+            - app-network
+
+    loadbalancer:
+        build:
+            context: docker/loadbalancer
+            dockerfile: Dockerfile
+        ports:
+            - 3000:80
+        depends_on:
+            - vm1
+            - vm2
         networks:
             - app-network
 

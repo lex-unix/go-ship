@@ -30,4 +30,6 @@ RUN git config --global user.name "Deployer"
 RUN cd app && git init && git add . && git commit -m "feat: initial commit"
 RUN cd app && git rev-parse --short HEAD > version.txt
 
+HEALTHCHECK --interval=1s CMD pgrep sleep
+
 CMD ["./boot.sh"]
