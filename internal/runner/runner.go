@@ -1,4 +1,4 @@
-package app
+package runner
 
 import (
 	"bytes"
@@ -12,14 +12,14 @@ import (
 	"neite.dev/go-ship/internal/ssh"
 )
 
-type app struct {
+type runner struct {
 	config     *config.UserConfig
 	sshClients *lazyloader.Loader[[]*ssh.Client]
 	stderr     bytes.Buffer
 	stdout     bytes.Buffer
 }
 
-func New() (*app, error) {
+func New() (*runner, error) {
 	config, err := config.ReadConfig()
 	if err != nil {
 		return nil, fmt.Errorf("Unable to read `goship.yaml` file: %s", err)
@@ -29,7 +29,7 @@ func New() (*app, error) {
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	app := app{
+	app := runner{
 		config:     config,
 		sshClients: sshClients,
 		stdout:     stdout,
@@ -39,34 +39,34 @@ func New() (*app, error) {
 	return &app, nil
 }
 
-func (a *app) Stdout() string {
-	return a.stdout.String()
+func (r *runner) Stdout() string {
+	return r.stdout.String()
 }
 
-func (a *app) Stderr() string {
-	return a.stderr.String()
+func (r *runner) Stderr() string {
+	return r.stderr.String()
 }
 
-func (a *app) CloseClients() {
-	for _, client := range a.sshClients.Load() {
+func (r *runner) CloseClients() {
+	for _, client := range r.sshClients.Load() {
 		client.Close()
 	}
 }
 
-func (a *app) runLocal(c string) error {
+func (r *runner) runLocal(c string) error {
 	cmd := exec.Command("sh", "-c", c)
-	cmd.Stderr = &a.stdout
-	cmd.Stderr = &a.stderr
+	cmd.Stderr = &r.stdout
+	cmd.Stderr = &r.stderr
 	if err := cmd.Run(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (a *app) runOverSSH(c string) error {
+func (r *runner) runOverSSH(c string) error {
 	var wg sync.WaitGroup
 
-	for _, client := range a.sshClients.Load() {
+	for _, client := range r.sshClients.Load() {
 		wg.Add(1)
 		go runOverSSH(&wg, c, client)
 
