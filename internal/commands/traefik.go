@@ -1,18 +1,20 @@
 package commands
 
-func RunTraefik(img, labels, args string) string {
+import "neite.dev/go-ship/internal/config"
+
+func RunTraefik(t *config.Traefik) string {
 	return Docker(
 		"run",
 		"-d",
 		"-p 80:80",
 		"--name traefik",
 		"--volume /var/run/docker.sock:/var/run/docker.sock:ro",
-		labels,
-		img,
+		t.Labels(),
+		t.Img,
 		"--providers.docker",
 		"--entryPoints.web.address=:80",
 		"--accesslog=true",
-		args,
+		t.Args(),
 	)
 
 }
