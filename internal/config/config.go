@@ -2,15 +2,22 @@ package config
 
 import (
 	"embed"
+	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path"
+	"strings"
 
 	"gopkg.in/yaml.v3"
+	"neite.dev/go-ship/internal/validator"
 )
 
 var (
 	userConfigFilename = "goship.yaml"
+	defaultSSHPort     = 22
+	defaultSSHUser     = "root"
+	defaultTraefikImg  = "traefik:v3.1"
 )
 
 //go:embed templates/*
@@ -41,27 +48,22 @@ type UserConfig struct {
 func ReadConfig() (*UserConfig, error) {
 	configPath, err := getConfigPath()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open config file: %w", err)
 	}
 
-	userConfig, err := os.Open(configPath)
+	configFile, err := os.Open(configPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open config file: %w", err)
 	}
-	defer userConfig.Close()
+	defer configFile.Close()
 
-	config, err := loadConfig(userConfig)
+	config, err := loadConfig(configFile)
+	config = defaultConfig(config)
 
-	if config.Dockerfile == "" {
-		config.Dockerfile = "."
+	v := validator.New()
+	if validateConfig(v, config); !v.Valid() {
+		return nil, formatErrors(v.Errors)
 	}
-	if config.SSH.User == "" {
-		config.SSH.User = "root"
-	}
-	if config.SSH.Port == 0 {
-		config.SSH.Port = 22
-	}
-
 	return config, nil
 }
 
@@ -74,18 +76,18 @@ func NewConfig() error {
 
 	configPath, err := getConfigPath()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create new config file: %w", err)
 	}
 
 	dest, err := os.Create(configPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create new config file: %w", err)
 	}
 	defer dest.Close()
 
 	_, err = dest.Write(template)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to write into new config file: %w", err)
 	}
 
 	return nil
@@ -122,4 +124,37 @@ func loadConfig(file io.Reader) (*UserConfig, error) {
 	}
 
 	return &config, nil
+}
+
+func defaultConfig(config *UserConfig) *UserConfig {
+	if config.SSH.Port == 0 {
+		config.SSH.Port = int64(defaultSSHPort)
+	}
+
+	if config.SSH.User == "" {
+		config.SSH.User = defaultSSHUser
+	}
+
+	if config.Traefik.Img == "" {
+		config.Traefik.Img = defaultTraefikImg
+	}
+
+	return config
+}
+
+func validateConfig(v *validator.Validator, config *UserConfig) {
+	v.Check(config.Service != "", "service", "Service was not provided")
+	v.Check(config.Image != "", "image", "Image was not provided")
+	v.Check(len(config.Servers) > 0, "servers", "No servers was provided")
+	v.Check(config.Registry.Username != "", "registry.username", "No registry username was provided")
+	v.Check(config.Registry.Password != "", "registry.password", "No registry password was provided")
+}
+
+func formatErrors(errs map[string]string) error {
+	var msg strings.Builder
+	for _, v := range errs {
+		fmt.Fprintf(&msg, "%s\n", v)
+	}
+	return errors.New(msg.String())
+
 }

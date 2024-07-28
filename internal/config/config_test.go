@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"neite.dev/go-ship/internal/validator"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -58,8 +59,6 @@ traefik:
 
 	labels := config.Traefik.Labels()
 
-	t.Log(labels)
-
 	assert.Regexp(t, regexp.MustCompile(`--label traefik.http.routers.testapp.entrypoints=websecure`), labels)
 	assert.Regexp(t, regexp.MustCompile(`--label traefik.enable=true`), labels)
 	assert.Regexp(t, regexp.MustCompile(`--label traefik.http.services.testapp.loadbalancer.server.port=0`), labels)
@@ -83,5 +82,55 @@ traefik:
 	assert.Regexp(t, regexp.MustCompile(`--entryPoints.web.address=:80`), args)
 	assert.Regexp(t, regexp.MustCompile(`--entryPoints.websecure.address=:443`), args)
 	assert.Regexp(t, regexp.MustCompile(`--entryPoints.websecure.invalid=true`), args)
+
+}
+
+func TestConfigValidation(t *testing.T) {
+	tests := map[string]struct {
+		expected bool
+		input    UserConfig
+	}{
+		`valid`: {
+			expected: true,
+			input: UserConfig{
+				Service: "test-service",
+				Image:   "test-image",
+				Servers: []string{"foo", "bar"},
+				Registry: Registry{
+					Username: "root",
+					Password: "root",
+				},
+			},
+		},
+		`invalid`: {
+			expected: false,
+			input: UserConfig{
+				Service: "",
+				Image:   "",
+				Servers: []string{"", ""},
+				Registry: Registry{
+					Username: "",
+					Password: "",
+				},
+			},
+		},
+		`semi-valid`: {
+			expected: false,
+			input: UserConfig{
+				Service: "test-service",
+				Image:   "test-image",
+				Servers: []string{},
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			v := validator.New()
+			validateConfig(v, &tt.input)
+			got := v.Valid()
+			assert.Equalf(t, tt.expected, got, "validateConfig(%#v) = %v, want %v", tt.input, got, tt.expected)
+		})
+	}
 
 }
