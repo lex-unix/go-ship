@@ -2,6 +2,7 @@ package config
 
 import (
 	"embed"
+	"io"
 	"os"
 	"path"
 
@@ -33,6 +34,7 @@ type UserConfig struct {
 	Servers    []string `yaml:"servers"`
 	SSH        SSH      `yaml:"ssh"`
 	Registry   Registry `yaml:"registry"`
+	Traefik    Traefik  `yaml:"traefik"`
 }
 
 // ReadConfig reads user's config file into UserConfig struct
@@ -41,17 +43,14 @@ func ReadConfig() (*UserConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	template, err := os.ReadFile(configPath)
+
+	userConfig, err := os.Open(configPath)
 	if err != nil {
 		return nil, err
 	}
+	defer userConfig.Close()
 
-	var config UserConfig
-
-	err = yaml.Unmarshal(template, &config)
-	if err != nil {
-		return nil, err
-	}
+	config, err := loadConfig(userConfig)
 
 	if config.Dockerfile == "" {
 		config.Dockerfile = "."
@@ -63,7 +62,7 @@ func ReadConfig() (*UserConfig, error) {
 		config.SSH.Port = 22
 	}
 
-	return &config, nil
+	return config, nil
 }
 
 // NewConfig creates new config file from a template
@@ -112,4 +111,15 @@ func getConfigPath() (string, error) {
 	}
 	configPath := path.Join(cwd, userConfigFilename)
 	return configPath, nil
+}
+
+func loadConfig(file io.Reader) (*UserConfig, error) {
+	d := yaml.NewDecoder(file)
+
+	var config UserConfig
+	if err := d.Decode(&config); err != nil {
+		return nil, err
+	}
+
+	return &config, nil
 }
