@@ -81,8 +81,8 @@ func (r *runner) InstallDocker() error {
 	return nil
 }
 
-func (r *runner) ShowContainers() error {
-	return r.runOverSSH(commands.Docker("ps"))
+func (r *runner) ShowAppInfo() error {
+	return r.runOverSSH(commands.Docker("ps", "--filter", "name="+r.config.Service))
 }
 
 func (r *runner) StopContainer() error {

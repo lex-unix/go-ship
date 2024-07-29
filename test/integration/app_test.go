@@ -15,6 +15,9 @@ func TestStartStop(t *testing.T) {
 
 	assertAppIsUp(t)
 
+	t.Log("running `goship app info`")
+	goship(t, "app show")
+
 	t.Log("running `goship app stop`")
 	goship(t, "app stop")
 

@@ -83,3 +83,7 @@ func (c *Client) Close() error {
 func formatAddress(ip string, port int64) string {
 	return fmt.Sprintf("%s:%d", ip, port)
 }
+
+func (c *Client) Address() string {
+	return c.conn.RemoteAddr().String()
+}

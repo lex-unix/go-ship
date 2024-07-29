@@ -67,16 +67,17 @@ func (r *runner) runOverSSH(c string) error {
 	var wg sync.WaitGroup
 
 	for _, client := range r.sshClients.Load() {
-		wg.Add(1)
-		go runOverSSH(&wg, c, client)
+		fmt.Printf("Host: %s\n\n", client.Address())
+		runOverSSH(&wg, c, client)
+		fmt.Printf("\n\n\n")
 
 	}
-	wg.Wait()
+	// wg.Wait()
 	return nil
 }
 
 func runOverSSH(wg *sync.WaitGroup, c string, client *ssh.Client) {
-	defer wg.Done()
+	// defer wg.Done()
 
 	sess, err := client.NewSession(os.Stdout, os.Stderr)
 	if err != nil {
