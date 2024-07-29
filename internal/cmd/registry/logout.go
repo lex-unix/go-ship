@@ -1,4 +1,4 @@
-package cmd
+package registry
 
 import (
 	"fmt"
@@ -8,13 +8,9 @@ import (
 	"neite.dev/go-ship/internal/runner"
 )
 
-func init() {
-	rootCmd.AddCommand(deployCmd)
-}
-
-var deployCmd = &cobra.Command{
-	Use:   "deploy",
-	Short: "Deploy your app to the servers",
+var logoutCmd = &cobra.Command{
+	Use:   "logout",
+	Short: "Logout from registry",
 	Run: func(cmd *cobra.Command, args []string) {
 		r, err := runner.New()
 		if err != nil {
@@ -22,7 +18,7 @@ var deployCmd = &cobra.Command{
 			return
 		}
 
-		if err := r.Deploy(); err != nil {
+		if err := r.RegistryLogout(); err != nil {
 			fmt.Fprint(os.Stderr, err)
 			return
 		}

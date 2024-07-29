@@ -96,21 +96,29 @@ func waitForApp(t *testing.T, maxRetry int, waitTime time.Duration) {
 		}
 		time.Sleep(waitTime)
 	}
-	assert.Equal(t, total, up, "app failed to become ready")
+	if assert.Equal(t, total, up, "app failed to become ready") == false {
+		t.FailNow()
+	}
 }
 
 func assertAppIsDown(t *testing.T) {
 	res := appResponse()
-	assert.Equal(t, http.StatusBadGateway, res.StatusCode, "expected app to be down")
+	if assert.Equal(t, http.StatusBadGateway, res.StatusCode, "expected app to be down") == false {
+		t.FailNow()
+	}
 }
 
 func assertAppIsUp(t *testing.T) {
 	res := appResponse()
-	assert.Equal(t, http.StatusOK, res.StatusCode, "expected app to be up")
+	if assert.Equal(t, http.StatusOK, res.StatusCode, "expected app to be up") == false {
+		t.FailNow()
+	}
 }
 
 func assertAppVersion(t *testing.T, want, got string) {
-	assert.Equal(t, want, got)
+	if assert.Equal(t, want, got) == false {
+		t.FailNow()
+	}
 }
 
 func getAppVersion() string {

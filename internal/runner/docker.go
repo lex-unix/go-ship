@@ -93,6 +93,29 @@ func (r *runner) StartContainer() error {
 	return r.runOverSSH(commands.Docker("start", r.config.Service))
 }
 
+func (r *runner) Deploy() error {
+
+	if err := r.PrepareImgForRemote(); err != nil {
+		return err
+	}
+
+	if err := r.RegistryLogin(); err != nil {
+		return err
+	}
+
+	if err := r.RunTraefik(); err != nil {
+		return err
+	}
+
+	if err := r.LatestRemoteContainer(); err != nil {
+		return err
+	}
+
+	r.CloseClients()
+
+	return nil
+}
+
 func installDocker(client *ssh.Client) error {
 	sftpClient, err := client.NewSFTPClient()
 	if err != nil {

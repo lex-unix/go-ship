@@ -6,10 +6,12 @@ import (
 
 	"github.com/spf13/cobra"
 	"neite.dev/go-ship/internal/cmd/app"
+	"neite.dev/go-ship/internal/cmd/registry"
 )
 
 func init() {
 	rootCmd.AddCommand(app.AppCmd)
+	rootCmd.AddCommand(registry.RegistryCmd)
 }
 
 var rootCmd = &cobra.Command{
