@@ -25,19 +25,10 @@ var setupCmd = &cobra.Command{
 
 		defer r.CloseClients()
 
-		if err := r.PrepareImgForRemote(); err != nil {
+		if err := r.Setup(); err != nil {
 			fmt.Fprint(os.Stderr, err)
 			return
 		}
 
-		if err := r.InstallDocker(); err != nil {
-			fmt.Fprint(os.Stderr, err)
-			return
-		}
-
-		if err := r.LatestRemoteContainer(); err != nil {
-			fmt.Fprint(os.Stderr, err)
-			return
-		}
 	},
 }

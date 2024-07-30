@@ -49,7 +49,7 @@ func (r *runner) RunRemoteContainer(version string) error {
 		return fmt.Errorf("unable to pull image from the registry: %w", err)
 	}
 
-	labels := []string{"--label traefik.enable=true", "--label traefik.http.routers.myapp.entrypoints=web", "--label traefik.http.routers.myapp.rule=\"PathPrefix(\\`/\\`)\""}
+	labels := []string{"--label traefik.enable=true", "--label traefik.http.routers.myapp.entrypoints=web", "--label traefik.http.routers.myapp.rule='PathPrefix(`/`)'"}
 
 	if err := r.runOverSSH(commands.Docker("run", "-d", strings.Join(labels, " "), "--name", r.config.Service, registryImg)); err != nil {
 		return fmt.Errorf("could not run your container on the server: %w", err)
@@ -94,7 +94,6 @@ func (r *runner) StartContainer() error {
 }
 
 func (r *runner) Deploy() error {
-
 	if err := r.PrepareImgForRemote(); err != nil {
 		return err
 	}
@@ -112,6 +111,30 @@ func (r *runner) Deploy() error {
 	}
 
 	r.CloseClients()
+
+	return nil
+}
+
+func (r *runner) Setup() error {
+	if err := r.InstallDocker(); err != nil {
+		return err
+	}
+
+	if err := r.PrepareImgForRemote(); err != nil {
+		return err
+	}
+
+	if err := r.RegistryLogin(); err != nil {
+		return err
+	}
+
+	if err := r.RunTraefik(); err != nil {
+		return err
+	}
+
+	if err := r.LatestRemoteContainer(); err != nil {
+		return err
+	}
 
 	return nil
 }
