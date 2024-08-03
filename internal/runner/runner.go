@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,8 +14,6 @@ import (
 type runner struct {
 	config     *config.UserConfig
 	sshClients *lazyloader.Loader[[]*ssh.Client]
-	stderr     bytes.Buffer
-	stdout     bytes.Buffer
 }
 
 func New() (*runner, error) {
@@ -25,26 +22,12 @@ func New() (*runner, error) {
 		return nil, fmt.Errorf("Unable to read `goship.yaml` file: %s", err)
 	}
 
-	sshClients := newLazySSHClientPool(config)
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-
 	app := runner{
 		config:     config,
-		sshClients: sshClients,
-		stdout:     stdout,
-		stderr:     stderr,
+		sshClients: newLazySSHClientPool(config),
 	}
 
 	return &app, nil
-}
-
-func (r *runner) Stdout() string {
-	return r.stdout.String()
-}
-
-func (r *runner) Stderr() string {
-	return r.stderr.String()
 }
 
 func (r *runner) CloseClients() {
@@ -55,38 +38,55 @@ func (r *runner) CloseClients() {
 
 func (r *runner) runLocal(c string) error {
 	cmd := exec.Command("sh", "-c", c)
-	cmd.Stderr = &r.stdout
-	cmd.Stderr = &r.stderr
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
 	if err := cmd.Run(); err != nil {
 		return err
 	}
+
 	return nil
 }
 
 func (r *runner) runOverSSH(c string) error {
+	clients := r.sshClients.Load()
+	if err := r.sshClients.Error(); err != nil {
+		return err
+	}
+
 	var wg sync.WaitGroup
 
-	for _, client := range r.sshClients.Load() {
-		fmt.Printf("Host: %s\n\n", client.Address())
-		runOverSSH(&wg, c, client)
-		fmt.Printf("\n\n\n")
-
+	for _, client := range clients {
+		wg.Add(1)
+		go runOverSSH(&wg, c, client)
 	}
-	// wg.Wait()
+
+	wg.Wait()
+
+	return nil
+}
+
+func (r *runner) runOverSSHWithHost(c string) error {
+	clients := r.sshClients.Load()
+	if err := r.sshClients.Error(); err != nil {
+		return err
+	}
+
+	for i, client := range clients {
+		fmt.Printf("Host: %s\n", r.config.Servers[i])
+		client.Exec(c)
+		fmt.Print("\n\n")
+	}
+
 	return nil
 }
 
 func runOverSSH(wg *sync.WaitGroup, c string, client *ssh.Client) {
-	// defer wg.Done()
+	defer wg.Done()
 
-	sess, err := client.NewSession(os.Stdout, os.Stderr)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer sess.Close()
-
-	if err := sess.Run(c); err != nil {
+	if err := client.Exec(c); err != nil {
+		// return err
 		fmt.Println(err)
 	}
 }

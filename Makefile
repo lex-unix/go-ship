@@ -81,10 +81,16 @@ run/live:
 		--build.include_ext "go, tpl, tmpl, html, css, scss, js, ts, sql, jpeg, jpg, gif, png, bmp, svg, webp, ico" \
 		--misc.clean_on_exit "true"
 
-## cleanup/compose: stop and remove docker compose containers
-.PHONY: test/compose
-cleanup/compose:
+## test/compose/down: stop and remove docker compose containers
+.PHONY: test/compose/down
+test/compose/down:
 	@docker compose -f ./test/integration/docker-compose.yml down -t 1
+
+## test/compose/start: stop and remove docker compose containers
+.PHONY: test/compose/start
+test/compose/start:
+	@docker compose -f ./test/integration/docker-compose.yml up --build --detach
+	@docker compose -f ./test/integration/docker-compose.yml exec --workdir / deployer  ./setup.sh
 
 # ==================================================================================== #
 # OPERATIONS

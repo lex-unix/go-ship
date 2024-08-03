@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -25,9 +26,12 @@ func dockerCompose(t *testing.T, composeCmd string) string {
 	var buff bytes.Buffer
 
 	cmd := exec.Command("sh", "-c", fmt.Sprintf("docker compose %s", composeCmd))
-	cmd.Stderr = &buff
 	cmd.Stdout = &buff
+
 	err := cmd.Run()
+
+	os.Stdout.Write(buff.Bytes())
+
 	if err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {

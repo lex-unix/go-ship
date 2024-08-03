@@ -26,6 +26,5 @@ var showCmd = &cobra.Command{
 			fmt.Fprint(os.Stderr, err)
 			return
 		}
-		fmt.Println(r.Stdout())
 	},
 }

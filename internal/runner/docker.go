@@ -74,7 +74,9 @@ func (r *runner) InstallDocker() error {
 	err := r.runOverSSH(commands.IsDockerInstalled())
 	if err != nil {
 		if errors.Is(err, ssh.ErrExit) {
-			return installDocker(r.sshClients.Load()[0])
+			// TODO: install docker via script
+			fmt.Println(err)
+			return nil
 		}
 		return fmt.Errorf("unable to check if Docker is installed on the server: %w", err)
 	}
@@ -82,15 +84,23 @@ func (r *runner) InstallDocker() error {
 }
 
 func (r *runner) ShowAppInfo() error {
-	return r.runOverSSH(commands.Docker("ps", "--filter", "name="+r.config.Service))
+	return r.runOverSSHWithHost(commands.Docker("ps", "--filter", "name="+r.config.Service))
 }
 
 func (r *runner) StopContainer() error {
-	return r.runOverSSH(commands.Docker("stop", r.config.Service))
+	err := r.runOverSSH(commands.Docker("stop", r.config.Service))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *runner) StartContainer() error {
-	return r.runOverSSH(commands.Docker("start", r.config.Service))
+	err := r.runOverSSH(commands.Docker("start", r.config.Service))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (r *runner) Deploy() error {
@@ -139,26 +149,26 @@ func (r *runner) Setup() error {
 	return nil
 }
 
-func installDocker(client *ssh.Client) error {
-	sftpClient, err := client.NewSFTPClient()
-	if err != nil {
-		return err
-	}
-	defer sftpClient.Close()
-
-	err = sftpClient.TransferExecutable("./scripts/setup.sh", "setup.sh")
-	if err != nil {
-		return err
-	}
-
-	session, err := client.NewSession(nil, nil)
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-
-	if err := session.Run("./setup.sh"); err != nil {
-		return err
-	}
-	return nil
-}
+// func installDocker(client *ssh.Client) error {
+// 	sftpClient, err := client.NewSFTPClient()
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer sftpClient.Close()
+//
+// 	err = sftpClient.TransferExecutable("./scripts/setup.sh", "setup.sh")
+// 	if err != nil {
+// 		return err
+// 	}
+//
+// 	session, err := client.NewSession(nil, nil)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer session.Close()
+//
+// 	if _, err := session.Run("./setup.sh"); err != nil {
+// 		return err
+// 	}
+// 	return nil
+// }

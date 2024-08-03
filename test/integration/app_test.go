@@ -2,7 +2,10 @@ package integration
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestStartStop(t *testing.T) {
@@ -16,7 +19,10 @@ func TestStartStop(t *testing.T) {
 	assertAppIsUp(t)
 
 	t.Log("running `goship app info`")
-	goship(t, "app show")
+	info := goship(t, "app show")
+
+	assert.Regexp(t, regexp.MustCompile("Host: vm1"), info)
+	assert.Regexp(t, regexp.MustCompile("Host: vm2"), info)
 
 	t.Log("running `goship app stop`")
 	goship(t, "app stop")
