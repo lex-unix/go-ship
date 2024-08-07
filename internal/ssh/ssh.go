@@ -17,9 +17,10 @@ var (
 
 type Client struct {
 	conn *ssh.Client
+	host string
 }
 
-func NewConnection(addr string, port int64) (*Client, error) {
+func NewConnection(host string, port int64) (*Client, error) {
 	homedir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
@@ -47,13 +48,13 @@ func NewConnection(addr string, port int64) (*Client, error) {
 		HostKeyCallback: hostkeyCallback,
 	}
 
-	dsn := formatAddress(addr, port)
+	dsn := formatAddress(host, port)
 	conn, err := ssh.Dial("tcp", dsn, config)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Client{conn: conn}, nil
+	return &Client{conn: conn, host: host}, nil
 }
 
 func (c *Client) NewSFTPClient() (*SFTPClient, error) {
@@ -79,6 +80,32 @@ func (c *Client) Exec(cmd string) error {
 	}
 
 	defer sess.Close()
+
+	sess.Stdout = os.Stdout
+	sess.Stderr = os.Stderr
+
+	if err := sess.Run(cmd); err != nil {
+		var exitErr *ssh.ExitError
+		switch {
+		case errors.As(err, &exitErr):
+			return ErrExit
+		default:
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (c *Client) ExecWithHost(cmd string) error {
+	sess, err := c.conn.NewSession()
+	if err != nil {
+		return err
+	}
+
+	defer sess.Close()
+
+	fmt.Fprintf(os.Stdout, "Host: %s\n", c.host)
 
 	sess.Stdout = os.Stdout
 	sess.Stderr = os.Stderr

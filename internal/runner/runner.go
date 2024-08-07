@@ -67,16 +67,15 @@ func (r *runner) runOverSSH(c string) error {
 	return nil
 }
 
-func (r *runner) runOverSSHWithHost(c string) error {
+func (r *runner) runOverSSHWithHost(cmd string) error {
 	clients := r.sshClients.Load()
 	if err := r.sshClients.Error(); err != nil {
 		return err
 	}
 
-	for i, client := range clients {
-		fmt.Printf("Host: %s\n", r.config.Servers[i])
-		client.Exec(c)
-		fmt.Print("\n\n")
+	for _, client := range clients {
+		client.ExecWithHost(cmd)
+		fmt.Fprintf(os.Stderr, "\n\n")
 	}
 
 	return nil
