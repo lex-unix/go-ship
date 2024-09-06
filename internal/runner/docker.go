@@ -148,27 +148,3 @@ func (r *runner) Setup() error {
 
 	return nil
 }
-
-// func installDocker(client *ssh.Client) error {
-// 	sftpClient, err := client.NewSFTPClient()
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer sftpClient.Close()
-//
-// 	err = sftpClient.TransferExecutable("./scripts/setup.sh", "setup.sh")
-// 	if err != nil {
-// 		return err
-// 	}
-//
-// 	session, err := client.NewSession(nil, nil)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer session.Close()
-//
-// 	if _, err := session.Run("./setup.sh"); err != nil {
-// 		return err
-// 	}
-// 	return nil
-// }

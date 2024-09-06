@@ -93,8 +93,8 @@ func NewConfig() error {
 	return nil
 }
 
-// IsExists checks if the config file exists
-func IsExists() bool {
+// Exists checks if the config file exists
+func Exists() bool {
 	configPath, err := getConfigPath()
 	if err != nil {
 		return false
