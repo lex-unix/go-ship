@@ -84,13 +84,34 @@ func (r *runner) InstallDocker() error {
 }
 
 func (r *runner) ShowAppInfo() error {
-	return r.runOverSSHWithHost(commands.Docker("ps", "--filter", "name="+r.config.Service))
+	results, err := r.RunOverSSH(commands.Docker("ps", "--filter", "name="+r.config.Service))
+	if err != nil {
+		return err
+	}
+
+	for result := range results {
+		if result.Err != nil {
+			fmt.Printf("Error on host: %s\n", result.Err)
+			continue
+		}
+		fmt.Printf("Host: %s\n%s\n\n", result.Host, result.Stdout)
+	}
+
+	return nil
 }
 
 func (r *runner) StopContainer() error {
-	err := r.runOverSSH(commands.Docker("stop", r.config.Service))
+	results, err := r.RunOverSSH(commands.Docker("stop", r.config.Service))
 	if err != nil {
 		return err
+	}
+
+	for result := range results {
+		if result.Err != nil {
+			fmt.Printf("Failed to stop application on %s: %s", result.Host, result.Err)
+			continue
+		}
+		fmt.Printf("Stopped application on %s\n", result.Host)
 	}
 	return nil
 }

@@ -16,6 +16,12 @@ type runner struct {
 	sshClients *lazyloader.Loader[[]*ssh.Client]
 }
 
+type Result struct {
+	Err    error
+	Stdout []byte
+	Host   string
+}
+
 func New() (*runner, error) {
 	config, err := config.ReadConfig()
 	if err != nil {
@@ -49,6 +55,39 @@ func (r *runner) runLocal(c string) error {
 	return nil
 }
 
+func (r *runner) RunOverSSH(cmd string) (<-chan Result, error) {
+	clients := r.sshClients.Load()
+	if err := r.sshClients.Error(); err != nil {
+		return nil, err
+	}
+
+	totalClients := len(clients)
+
+	results := make(chan Result, totalClients)
+	var wg sync.WaitGroup
+
+	fn := func(client *ssh.Client) {
+		defer wg.Done()
+
+		out, err := client.Exec(cmd)
+		result := Result{Stdout: out, Host: client.Host, Err: err}
+		results <- result
+	}
+
+	wg.Add(totalClients)
+
+	for _, client := range clients {
+		go fn(client)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	return results, nil
+}
+
 func (r *runner) runOverSSH(c string) error {
 	clients := r.sshClients.Load()
 	if err := r.sshClients.Error(); err != nil {
@@ -67,24 +106,10 @@ func (r *runner) runOverSSH(c string) error {
 	return nil
 }
 
-func (r *runner) runOverSSHWithHost(cmd string) error {
-	clients := r.sshClients.Load()
-	if err := r.sshClients.Error(); err != nil {
-		return err
-	}
-
-	for _, client := range clients {
-		client.ExecWithHost(cmd)
-		fmt.Fprintf(os.Stderr, "\n\n")
-	}
-
-	return nil
-}
-
 func runOverSSH(wg *sync.WaitGroup, c string, client *ssh.Client) {
 	defer wg.Done()
 
-	if err := client.Exec(c); err != nil {
+	if _, err := client.Exec(c); err != nil {
 		// return err
 		fmt.Println(err)
 	}

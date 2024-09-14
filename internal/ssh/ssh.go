@@ -17,7 +17,7 @@ var (
 
 type Client struct {
 	conn *ssh.Client
-	host string
+	Host string
 }
 
 func NewConnection(host string, port int64) (*Client, error) {
@@ -54,7 +54,7 @@ func NewConnection(host string, port int64) (*Client, error) {
 		return nil, err
 	}
 
-	return &Client{conn: conn, host: host}, nil
+	return &Client{conn: conn, Host: host}, nil
 }
 
 func (c *Client) NewSFTPClient() (*SFTPClient, error) {
@@ -73,28 +73,26 @@ func (c *Client) Address() string {
 	return c.conn.RemoteAddr().String()
 }
 
-func (c *Client) Exec(cmd string) error {
+func (c *Client) Exec(cmd string) ([]byte, error) {
 	sess, err := c.conn.NewSession()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	defer sess.Close()
 
-	sess.Stdout = os.Stdout
-	sess.Stderr = os.Stderr
-
-	if err := sess.Run(cmd); err != nil {
+	out, err := sess.Output(cmd)
+	if err != nil {
 		var exitErr *ssh.ExitError
 		switch {
 		case errors.As(err, &exitErr):
-			return ErrExit
+			return nil, ErrExit
 		default:
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return out, nil
 }
 
 func (c *Client) ExecWithHost(cmd string) error {
@@ -105,7 +103,7 @@ func (c *Client) ExecWithHost(cmd string) error {
 
 	defer sess.Close()
 
-	fmt.Fprintf(os.Stdout, "Host: %s\n", c.host)
+	fmt.Fprintf(os.Stdout, "Host: %s\n", c.Host)
 
 	sess.Stdout = os.Stdout
 	sess.Stderr = os.Stderr
