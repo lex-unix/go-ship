@@ -12,7 +12,7 @@ import (
 )
 
 type runner struct {
-	config     *config.UserConfig
+	config     *config.Config
 	sshClients *lazyloader.Loader[[]*ssh.Client]
 }
 
@@ -115,7 +115,7 @@ func runOverSSH(wg *sync.WaitGroup, c string, client *ssh.Client) {
 	}
 }
 
-func newLazySSHClientPool(config *config.UserConfig) *lazyloader.Loader[[]*ssh.Client] {
+func newLazySSHClientPool(config *config.Config) *lazyloader.Loader[[]*ssh.Client] {
 	return lazyloader.New(func() ([]*ssh.Client, error) {
 		sshClients := make([]*ssh.Client, 0, len(config.Servers))
 		for _, server := range config.Servers {

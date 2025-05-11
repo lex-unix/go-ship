@@ -7,25 +7,19 @@ import (
 )
 
 var defaultTraefikLabels = []string{
-	"--label traefik.http.routers.catchall.entryPoints=web",
-	"--label traefik.http.routers.catchall.rule='PathPrefix(`/`)'",
-	"--label traefik.http.routers.catchall.service=unavailable",
-	"--label traefik.http.routers.catchall.priority=1",
-	"--label traefik.http.services.unavailable.loadbalancer.server.port=0",
+	"traefik.http.routers.catchall.entryPoints=web",
+	"traefik.http.routers.catchall.rule='PathPrefix(`/`)'",
+	"traefik.http.routers.catchall.service=unavailable",
+	"traefik.http.routers.catchall.priority=1",
+	"traefik.http.services.unavailable.loadbalancer.server.port=0",
 }
 
-type Traefik struct {
-	Img       string                 `yaml:"image"`
-	ProxyArgs map[string]interface{} `yaml:"args"`
-	AppLabels map[string]interface{} `yaml:"labels"`
-}
-
-func (c *Traefik) Labels() string {
-	labels := collectFlags(c.AppLabels, "label")
-	labels = append(labels, defaultTraefikLabels...)
-
-	return strings.Join(labels, " ")
-}
+// func (c *Traefik) Labels() string {
+// 	labels := collectFlags(c.AppLabels, "label")
+// 	labels = append(labels, defaultTraefikLabels...)
+//
+// 	return strings.Join(labels, " ")
+// }
 
 func (c *Traefik) Args() string {
 	return strings.Join(collectArgs(c.ProxyArgs), " ")
