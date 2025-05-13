@@ -193,10 +193,12 @@ func (s *SSH) ReadFile(path string) ([]byte, error) {
 			if _, err := out.Write(line); err != nil {
 				logging.Errorf("failed to write file output")
 				readErrCh <- err
+				return
 			}
 		}
 		if err := scanner.Err(); err != nil {
 			readErrCh <- fmt.Errorf("scanner error: %w", err)
+			return
 		}
 		readErrCh <- nil
 	}
