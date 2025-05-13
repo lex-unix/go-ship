@@ -1,7 +1,7 @@
 include .env
 
-MAIN_PACKAGE_PATH := ./cmd/goship
-BINARY_NAME := goship
+MAIN_PACKAGE_PATH := ./cmd/shipit
+BINARY_NAME := shipit
 
 # ==================================================================================== #
 # HELPERS
