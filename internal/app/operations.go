@@ -9,26 +9,26 @@ import (
 	"neite.dev/go-ship/internal/txman"
 )
 
-func PullImage(ctx context.Context, img string) txman.Callback {
-	return func(client sshexec.Service) error {
+func PullImage(img string) txman.Callback {
+	return func(ctx context.Context, client sshexec.Service) error {
 		return client.Run(ctx, command.PullImage(img))
 	}
 }
 
-func RunContainer(ctx context.Context, img string, container string) txman.Callback {
-	return func(client sshexec.Service) error {
+func RunContainer(img string, container string) txman.Callback {
+	return func(ctx context.Context, client sshexec.Service) error {
 		return client.Run(ctx, command.RunContainer(img, container))
 	}
 }
 
-func StopContainer(ctx context.Context, containerName string) txman.Callback {
-	return func(client sshexec.Service) error {
+func StopContainer(containerName string) txman.Callback {
+	return func(ctx context.Context, client sshexec.Service) error {
 		return client.Run(ctx, command.StopContainer(containerName))
 	}
 }
 
-func StartContainer(ctx context.Context, containerName string) txman.Callback {
-	return func(client sshexec.Service) error {
+func StartContainer(containerName string) txman.Callback {
+	return func(ctx context.Context, client sshexec.Service) error {
 		return client.Run(ctx, command.StartContainer(containerName))
 	}
 }
@@ -39,8 +39,8 @@ type RemoteFileContent struct {
 	err  error
 }
 
-func ReadRemoteFile(ctx context.Context, path string, resultsCh chan<- RemoteFileContent) txman.Callback {
-	return func(client sshexec.Service) error {
+func ReadRemoteFile(path string, resultsCh chan<- RemoteFileContent) txman.Callback {
+	return func(ctx context.Context, client sshexec.Service) error {
 		data, err := client.ReadFile(path)
 		result := RemoteFileContent{
 			host: client.Host(),
@@ -55,8 +55,10 @@ func ReadRemoteFile(ctx context.Context, path string, resultsCh chan<- RemoteFil
 	}
 }
 
-func WriteToRemoteFile(ctx context.Context, path string, data []byte) txman.Callback {
-	return func(client sshexec.Service) error {
+func WriteToRemoteFile(path string, data []byte) txman.Callback {
+	return func(ctx context.Context, client sshexec.Service) error {
 		return client.WriteFile(path, data)
 	}
 }
+
+func rollbackNoop(_ context.Context, _ sshexec.Service) error { return nil }

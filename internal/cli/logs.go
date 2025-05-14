@@ -2,10 +2,8 @@ package cli
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
-	"slices"
 	"syscall"
 
 	"github.com/spf13/cobra"
@@ -18,22 +16,32 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(historyCmd)
-	historyCmd.PersistentFlags().StringP("sort", "s", "desc", "Display history sorted by timestamp in (desc)ending or (asc)ending order.")
+	rootCmd.AddCommand(logCmd)
+	logCmd.PersistentFlags().BoolP("follow", "f", false, "Follow logs on servers")
+	logCmd.PersistentFlags().IntP("lines", "n", 100, "Number of lines to show from each server")
+	logCmd.PersistentFlags().String("since", "", "Show lines since timestamp (e.g. 2013-01-02T13:23:37Z) or relative (e.g. 42m for 42 minutes)")
 }
 
-var historyCmd = &cobra.Command{
-	Use:   "history",
-	Short: "List app version history",
+var logCmd = &cobra.Command{
+	Use:   "logs",
+	Short: "Fetch logs from you containers",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		sortDir, _ := cmd.Flags().GetString("sort")
-		if !slices.Contains([]string{"asc", "desc"}, sortDir) {
-			return fmt.Errorf("sort value can be either 'desc' or 'asc' and you passed: %s", sortDir)
-		}
-
 		ctx := context.Background()
 		ctx, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 		defer cancel()
+
+		var (
+			follow bool
+			lines  int
+			since  string
+			err    error
+		)
+		follow, err = cmd.Flags().GetBool("follow")
+		lines, err = cmd.Flags().GetInt("lines")
+		since, err = cmd.Flags().GetString("since")
+		if err != nil {
+			return err
+		}
 
 		cfg := config.Get()
 
@@ -48,15 +56,10 @@ var historyCmd = &cobra.Command{
 		}
 
 		lexec := localexec.New()
-		a := app.New(txmanager, lexec)
-
-		history, err := a.History(ctx, sortDir)
-		if err != nil {
-			logging.Errorf("failed to get history: %s", err)
-		}
-
-		for _, entry := range history {
-			fmt.Printf("Version: %s, date: %s\n", entry.Version, entry.Timestamp.Format("2006-01-02 15:04:05"))
+		app := app.New(txmanager, lexec)
+		if err := app.Logs(ctx, follow, lines, since); err != nil {
+			logging.Errorf("command failed: %s", err)
+			os.Exit(1)
 		}
 
 		return nil

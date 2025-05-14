@@ -44,6 +44,7 @@ func New(host, user string, port int64) (*SSH, error) {
 
 	var authMethod ssh.AuthMethod
 	socketPath := os.Getenv("SSH_AUTH_SOCK")
+	// try to use ssh agent for authentication like 1password
 	if socketPath != "" {
 		socket, err := net.Dial("unix", socketPath)
 		// if there is an error, will try to use public key file
@@ -96,6 +97,7 @@ func (s *SSH) Run(ctx context.Context, cmd string, options ...RunOption) error {
 	go func() {
 		select {
 		case <-ctx.Done():
+			logging.DebugHost(s.host, "signaling remote process to exit...")
 			err := session.Signal(ssh.SIGTERM)
 			if err != nil {
 				logging.ErrorHostf(s.host, "failed to stop remote process: %s", err)
@@ -238,6 +240,7 @@ func (s *SSH) read(wg *sync.WaitGroup, in io.Reader, out io.Writer) {
 	for scanner.Scan() {
 		line := scanner.Bytes()
 		if out != nil {
+			line = append(line, '\n')
 			if _, err := out.Write(line); err != nil {
 				logging.ErrorHostf(s.host, "capture remote command failed: %s", err)
 			}

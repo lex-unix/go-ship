@@ -52,5 +52,26 @@ func ListRunningContainers() string {
 }
 
 func ListAllContainers() string {
-	return "docker ps"
+	return "docker ps -a"
+}
+
+func ContainerLogs(container string, follow bool, lines int, since string) string {
+	var sb strings.Builder
+	sb.WriteString("docker logs")
+
+	if len(since) != 0 {
+		sb.WriteString(" --since ")
+		sb.WriteString(since)
+	}
+	if lines != 0 {
+		sb.WriteString(fmt.Sprintf(" --tail %d", lines))
+	}
+	if follow {
+		sb.WriteString(" --follow")
+	}
+
+	sb.WriteString(" ")
+	sb.WriteString(container)
+
+	return sb.String()
 }

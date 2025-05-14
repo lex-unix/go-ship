@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"slices"
+	"sort"
 	"time"
 
 	"neite.dev/go-ship/internal/exec/sshexec"
@@ -21,11 +21,28 @@ type History struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
+// ByDateAsc is a helper type for History slice that implements sort.Interface
+type ByDateAsc []History
+
+func (a ByDateAsc) Len() int           { return len(a) }
+func (a ByDateAsc) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByDateAsc) Less(i, j int) bool { return a[i].Timestamp.Before(a[j].Timestamp) }
+
+// ByDateDesc is a helper type for History slice that implements sort.Interface
+type ByDateDesc []History
+
+func (a ByDateDesc) Len() int           { return len(a) }
+func (a ByDateDesc) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByDateDesc) Less(i, j int) bool { return a[i].Timestamp.After(a[j].Timestamp) }
+
 func (app *app) LoadHistory(ctx context.Context) error {
+	if app.history != nil {
+		return nil
+	}
 	resultsCh := make(chan RemoteFileContent, len(app.servers))
 	defer close(resultsCh)
-	seq := txman.Sequence{CommandFunc: ReadRemoteFile(ctx, app.historyFilePath, resultsCh)}
-	if err := app.txmanager.Run(ctx, []txman.Sequence{seq}); err != nil {
+	err := app.txmanager.Execute(ctx, ReadRemoteFile(app.historyFilePath, resultsCh))
+	if err != nil {
 		return err
 	}
 
@@ -68,25 +85,14 @@ func (app *app) loadHistory(raw []byte) error {
 	return nil
 }
 
+// sortHistory sorts history in descending order and modifies history slice.
+// If history is empty or already sorted it does nothing.
 func (app *app) sortHistory() {
 	if app.history == nil || app.historySorted {
 		return
 	}
 
-	sorted := make([]History, len(app.history))
-	copy(sorted, app.history)
-
-	slices.SortFunc(sorted, func(a, b History) int {
-		if a.Timestamp.Before(b.Timestamp) {
-			return -1
-		}
-		if a.Timestamp.After(b.Timestamp) {
-			return 1
-		}
-		return 0
-	})
-
-	app.history = sorted
+	sort.Sort(ByDateDesc(app.history))
 	app.historySorted = true
 }
 
@@ -99,7 +105,7 @@ func (app *app) AppendVersion(version string) txman.Callback {
 	app.historySorted = false
 	data, marshalErr := json.Marshal(app.history)
 
-	return func(client sshexec.Service) error {
+	return func(ctx context.Context, client sshexec.Service) error {
 		if marshalErr != nil {
 			return fmt.Errorf("failed to marshal history: %w", marshalErr)
 		}
@@ -109,9 +115,11 @@ func (app *app) AppendVersion(version string) txman.Callback {
 
 func (app *app) LatestVersion() string {
 	app.sortHistory()
-	historyLen := len(app.history)
-	if historyLen == 0 {
+	if app.history == nil {
 		return ""
 	}
-	return app.history[historyLen-1].Version
+	if len(app.history) == 0 {
+		return ""
+	}
+	return app.history[0].Version
 }

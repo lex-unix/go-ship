@@ -44,6 +44,7 @@ func (c Command) Run(ctx context.Context, cmd string) error {
 	go read(stdout)
 	go read(stderr)
 
+	logging.Infof("running command %q", cmd)
 	if err := command.Start(); err != nil {
 		return fmt.Errorf("failed to start command: %q: %w", cmd, err)
 	}

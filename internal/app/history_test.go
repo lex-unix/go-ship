@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -50,15 +49,12 @@ type StubTxman struct {
 
 func (stub *StubTxman) Tx(ctx context.Context, transactions []txman.Transaction) error {
 	for _, tx := range transactions {
-		_ = tx.ForwardFunc(stub.ssh)
+		_ = tx.ForwardFunc(ctx, stub.ssh)
 	}
 	return nil
 }
 
-func (stub *StubTxman) Run(ctx context.Context, sequences []txman.Sequence) error {
-	for _, seq := range sequences {
-		_ = seq.CommandFunc(stub.ssh)
-	}
+func (stub *StubTxman) Execute(ctx context.Context, callback txman.Callback) error {
 	return nil
 }
 
@@ -68,19 +64,15 @@ func TestHistorySort(t *testing.T) {
 	assert.NoError(t, err)
 
 	app.sortHistory()
-	for i, entry := range app.history {
-		expectedVersion := fmt.Sprint(i + 1)
-		assert.Equal(t, expectedVersion, entry.Version)
-	}
 
 	var historyData []History
 	err = json.Unmarshal(testHistoryData, &historyData)
 	assert.NoError(t, err)
 
 	assert.Len(t, app.history, len(historyData))
-	assert.Equal(t, app.history[0].Version, "1")
+	assert.Equal(t, app.history[0].Version, "3")
 	assert.Equal(t, app.history[1].Version, "2")
-	assert.Equal(t, app.history[2].Version, "3")
+	assert.Equal(t, app.history[2].Version, "1")
 }
 
 func TestHistoryLatestVersion(t *testing.T) {
@@ -103,7 +95,7 @@ func TestHistoryAppend(t *testing.T) {
 	initialLen := len(app.history)
 	appendedVersion := "4"
 
-	err = app.AppendVersion(appendedVersion)(txmanager.ssh)
+	err = app.AppendVersion(appendedVersion)(context.TODO(), txmanager.ssh)
 	assert.NoError(t, err)
 
 	actualWrittenBytes := ssh.out.String()

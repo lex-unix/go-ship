@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -11,8 +10,10 @@ import (
 )
 
 func init() {
-	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Display debugging output in the console. (default: false)")
+	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Display debugging output in the console")
 	viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
+
+	rootCmd.PersistentFlags().String("host", "", "Host to run command on")
 }
 
 var rootCmd = &cobra.Command{
@@ -32,7 +33,6 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }

@@ -2,10 +2,8 @@ package cli
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"os/signal"
-	"slices"
 	"syscall"
 
 	"github.com/spf13/cobra"
@@ -18,19 +16,13 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(historyCmd)
-	historyCmd.PersistentFlags().StringP("sort", "s", "desc", "Display history sorted by timestamp in (desc)ending or (asc)ending order.")
+	appCmd.AddCommand(showCmd)
 }
 
-var historyCmd = &cobra.Command{
-	Use:   "history",
-	Short: "List app version history",
+var showCmd = &cobra.Command{
+	Use:   "show",
+	Short: "Show app containers on the servers",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		sortDir, _ := cmd.Flags().GetString("sort")
-		if !slices.Contains([]string{"asc", "desc"}, sortDir) {
-			return fmt.Errorf("sort value can be either 'desc' or 'asc' and you passed: %s", sortDir)
-		}
-
 		ctx := context.Background()
 		ctx, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 		defer cancel()
@@ -48,15 +40,11 @@ var historyCmd = &cobra.Command{
 		}
 
 		lexec := localexec.New()
-		a := app.New(txmanager, lexec)
+		app := app.New(txmanager, lexec)
 
-		history, err := a.History(ctx, sortDir)
-		if err != nil {
-			logging.Errorf("failed to get history: %s", err)
-		}
-
-		for _, entry := range history {
-			fmt.Printf("Version: %s, date: %s\n", entry.Version, entry.Timestamp.Format("2006-01-02 15:04:05"))
+		if err := app.ShowAppInfo(ctx); err != nil {
+			logging.Errorf("command failed: %s", err)
+			os.Exit(1)
 		}
 
 		return nil

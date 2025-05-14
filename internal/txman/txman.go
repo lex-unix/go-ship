@@ -2,6 +2,7 @@ package txman
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -14,12 +15,12 @@ type Service interface {
 	// If a transaction fails or a ctx is canceled, it will cancel every pending transactions and start rollback phase.
 	Tx(ctx context.Context, transactions []Transaction) error
 
-	// Run runs each sequence on a remote host.
+	// Execute runs a provided callback on a each remote host.
 	// In case of a command failure, it will continue execution on other hosts.
-	Run(ctx context.Context, sequences []Sequence) error
+	Execute(ctx context.Context, callback Callback) error
 }
 
-type Callback func(client sshexec.Service) error
+type Callback func(ctx context.Context, client sshexec.Service) error
 
 type Transaction struct {
 	Name         string
@@ -73,25 +74,24 @@ func (m *txman) Tx(ctx context.Context, transactions []Transaction) error {
 
 	m.wg.Add(len(m.clients))
 	for host, client := range m.clients {
-		client := client
 		state := m.state[host]
 
 		go func() {
 			defer m.wg.Done()
-			for txIndex, tx := range transactions {
+			for txStep, tx := range transactions {
 				select {
 				case <-ctx.Done():
 					return
 				default:
 				}
 
-				err := tx.ForwardFunc(client)
+				err := tx.ForwardFunc(ctx, client)
 				if err != nil {
 					cancel()
 					return
 				}
 
-				state.lastCompletedStep = txIndex
+				state.lastCompletedStep = txStep
 			}
 		}()
 	}
@@ -103,7 +103,6 @@ func (m *txman) Tx(ctx context.Context, transactions []Transaction) error {
 		logging.Info("initiating rollback...")
 
 		for host, client := range m.clients {
-			client := client
 			state := m.state[host]
 			if state.lastCompletedStep == 0 {
 				continue
@@ -113,7 +112,7 @@ func (m *txman) Tx(ctx context.Context, transactions []Transaction) error {
 				defer m.wg.Done()
 				for i := state.lastCompletedStep; i >= 0; i-- {
 					tx := transactions[i]
-					err := tx.RollbackFunc(client)
+					err := tx.RollbackFunc(ctx, client)
 					if err != nil {
 						logging.ErrorHostf(host, "failed rollback step %q: %s", tx.Name, err)
 					} else {
@@ -131,30 +130,32 @@ func (m *txman) Tx(ctx context.Context, transactions []Transaction) error {
 	return nil
 }
 
-func (m *txman) Run(ctx context.Context, sequences []Sequence) error {
+func (m *txman) Execute(ctx context.Context, callback Callback) error {
+	errCh := make(chan error, len(m.clients))
 	m.wg.Add(len(m.clients))
 	for host, client := range m.clients {
-		client := client
-
 		go func() {
 			defer m.wg.Done()
-			for _, seq := range sequences {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-				}
-
-				err := seq.CommandFunc(client)
-				if err != nil {
-					logging.ErrorHost(host, "failed to run command")
-					return
-				}
+			err := callback(ctx, client)
+			if err != nil {
+				logging.ErrorHost(host, "failed to run command")
+				errCh <- err
 			}
 		}()
 	}
 
-	m.wg.Wait()
+	go func() {
+		m.wg.Wait()
+		close(errCh)
+	}()
+
+	var errs []error
+	for err := range errCh {
+		errs = append(errs, err)
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
 
 	return nil
 }
