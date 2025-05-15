@@ -14,7 +14,7 @@ var cfg *Config
 
 // default values
 const (
-	appName               = "goship"
+	appName               = "shipit"
 	defaultSSHPort        = 22
 	defaultSSHUser        = "root"
 	defaultTraefikImage   = "traefik:v3.1"

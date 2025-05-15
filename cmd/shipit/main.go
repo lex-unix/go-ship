@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -23,15 +24,22 @@ func main() {
 
 	if err := config.Load(); err != nil {
 		logging.Errorf("failed to load configuration: %s", err)
+		os.Exit(1)
+	}
+
+	if err := config.Validate(); err != nil {
+		logging.Errorf("configuration is invalid")
+		fmt.Println(err)
+		os.Exit(1)
 	}
 
 	cfg := config.Get()
 	if cfg.Debug {
 		l := logging.New(os.Stderr, logging.LevelDebug)
 		logging.SetDefault(l)
-
 	}
 
+	lexec := localexec.New()
 	txmanager := txman.New()
 	for _, server := range cfg.Servers {
 		client, err := sshexec.New(server, cfg.SSH.User, cfg.SSH.Port)
@@ -42,7 +50,6 @@ func main() {
 		txmanager.RegisterHost(server, client)
 	}
 
-	lexec := localexec.New()
 	app := app.New(txmanager, lexec)
 
 	f := &cliutil.Factory{

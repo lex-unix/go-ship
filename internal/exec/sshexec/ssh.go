@@ -117,7 +117,7 @@ func (s *SSH) Run(ctx context.Context, cmd string, options ...RunOption) error {
 
 	logging.InfoHostf(s.host, "running command %q", cmd)
 	if err := session.Start(cmd); err != nil {
-		return fmt.Errorf("failed to start command %q: %w", err)
+		return fmt.Errorf("failed to start command %q: %w", cmd, err)
 	}
 
 	waitErr := session.Wait()
@@ -153,7 +153,7 @@ func (s *SSH) WriteFile(path string, data []byte) error {
 
 	cmd := fmt.Sprintf("cat > %s", path)
 	if err := session.Start(cmd); err != nil {
-		return fmt.Errorf("failed to start command %q: %w", err)
+		return fmt.Errorf("failed to start command %q: %w", cmd, err)
 	}
 
 	_, err = stdin.Write(data)
@@ -213,7 +213,7 @@ func (s *SSH) ReadFile(path string) ([]byte, error) {
 
 	cmd := fmt.Sprintf("cat %s", path)
 	if err := session.Start(cmd); err != nil {
-		return nil, fmt.Errorf("failed to start command %q: %w", err)
+		return nil, fmt.Errorf("failed to start command %q: %w", cmd, err)
 	}
 
 	waitErr := session.Wait()
