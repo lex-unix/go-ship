@@ -35,7 +35,7 @@ func (a ByDateDesc) Len() int           { return len(a) }
 func (a ByDateDesc) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByDateDesc) Less(i, j int) bool { return a[i].Timestamp.After(a[j].Timestamp) }
 
-func (app *app) LoadHistory(ctx context.Context) error {
+func (app *App) LoadHistory(ctx context.Context) error {
 	if app.history != nil {
 		return nil
 	}
@@ -74,7 +74,7 @@ func (app *app) LoadHistory(ctx context.Context) error {
 	return app.loadHistory(contents)
 }
 
-func (app *app) loadHistory(raw []byte) error {
+func (app *App) loadHistory(raw []byte) error {
 	var h []History
 	err := json.Unmarshal(raw, &h)
 	if err != nil {
@@ -87,7 +87,7 @@ func (app *app) loadHistory(raw []byte) error {
 
 // sortHistory sorts history in descending order and modifies history slice.
 // If history is empty or already sorted it does nothing.
-func (app *app) sortHistory() {
+func (app *App) sortHistory() {
 	if app.history == nil || app.historySorted {
 		return
 	}
@@ -96,7 +96,7 @@ func (app *app) sortHistory() {
 	app.historySorted = true
 }
 
-func (app *app) AppendVersion(version string) txman.Callback {
+func (app *App) AppendVersion(version string) txman.Callback {
 	h := History{
 		Version:   version,
 		Timestamp: time.Now(),
@@ -113,7 +113,7 @@ func (app *app) AppendVersion(version string) txman.Callback {
 	}
 }
 
-func (app *app) LatestVersion() string {
+func (app *App) LatestVersion() string {
 	app.sortHistory()
 	if app.history == nil {
 		return ""

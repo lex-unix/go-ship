@@ -26,7 +26,7 @@ type Server struct {
 	Addr string
 }
 
-type app struct {
+type App struct {
 	servers []Server
 
 	txmanager txman.Service
@@ -37,9 +37,9 @@ type app struct {
 	historyFilePath string
 }
 
-type Option func(*app)
+type Option func(*App)
 
-func New(txmanager txman.Service, lexec localexec.Service, options ...Option) *app {
+func New(txmanager txman.Service, lexec localexec.Service, options ...Option) *App {
 	cfg := config.Get()
 	servers := make([]Server, len(cfg.Servers))
 	for i, server := range cfg.Servers {
@@ -48,7 +48,7 @@ func New(txmanager txman.Service, lexec localexec.Service, options ...Option) *a
 		}
 	}
 
-	a := &app{
+	a := &App{
 		txmanager:       txmanager,
 		lexec:           lexec,
 		servers:         servers,
@@ -75,7 +75,7 @@ func generateRandomString(length int) string {
 	return string(b)
 }
 
-func (app *app) Deploy(ctx context.Context) error {
+func (app *App) Deploy(ctx context.Context) error {
 	cfg := config.Get()
 
 	err := app.LoadHistory(ctx)
@@ -137,7 +137,7 @@ func (app *app) Deploy(ctx context.Context) error {
 	return nil
 }
 
-func (app *app) Rollback(ctx context.Context, version string) error {
+func (app *App) Rollback(ctx context.Context, version string) error {
 	err := app.LoadHistory(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to read history at %s: %w", app.historyFilePath, err)
@@ -184,7 +184,7 @@ func (app *app) Rollback(ctx context.Context, version string) error {
 	return nil
 }
 
-func (app *app) History(ctx context.Context, sortDir string) ([]History, error) {
+func (app *App) History(ctx context.Context, sortDir string) ([]History, error) {
 	if err := app.LoadHistory(ctx); err != nil {
 		return nil, err
 	}
@@ -198,7 +198,7 @@ func (app *app) History(ctx context.Context, sortDir string) ([]History, error) 
 	return app.history, nil
 }
 
-func (app *app) ShowAppInfo(ctx context.Context) error {
+func (app *App) ShowAppInfo(ctx context.Context) error {
 	cfg := config.Get()
 	if err := app.LoadHistory(ctx); err != nil {
 		return err
@@ -306,7 +306,7 @@ func (s *StreamProcessor) Close() error {
 	return s.pipeWriter.Close()
 }
 
-func (app *app) Logs(ctx context.Context, follow bool, lines int, since string) error {
+func (app *App) Logs(ctx context.Context, follow bool, lines int, since string) error {
 	cfg := config.Get()
 	if err := app.LoadHistory(ctx); err != nil {
 		return err
@@ -335,5 +335,51 @@ func (app *app) Logs(ctx context.Context, follow bool, lines int, since string) 
 	if err != nil {
 		return fmt.Errorf("one or more hosts failed to stream logs: %w", err)
 	}
+	return nil
+}
+
+func (app *App) StopContainer(ctx context.Context) error {
+	cfg := config.Get()
+	if err := app.LoadHistory(ctx); err != nil {
+		return err
+	}
+
+	container := fmt.Sprintf("%s-%s", cfg.Service, app.LatestVersion())
+
+	err := app.txmanager.Execute(ctx, func(ctx context.Context, client sshexec.Service) error {
+		err := client.Run(ctx, command.StopContainer(container))
+		if err != nil {
+			return fmt.Errorf("failed to stop container on %s: %w", client.Host(), err)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (app *App) StartContainer(ctx context.Context) error {
+	cfg := config.Get()
+	if err := app.LoadHistory(ctx); err != nil {
+		return err
+	}
+
+	container := fmt.Sprintf("%s-%s", cfg.Service, app.LatestVersion())
+
+	err := app.txmanager.Execute(ctx, func(ctx context.Context, client sshexec.Service) error {
+		err := client.Run(ctx, command.StartContainer(container))
+		if err != nil {
+			return fmt.Errorf("failed to start container on %s: %w", client.Host(), err)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

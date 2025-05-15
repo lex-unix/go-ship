@@ -59,7 +59,7 @@ func (stub *StubTxman) Execute(ctx context.Context, callback txman.Callback) err
 }
 
 func TestHistorySort(t *testing.T) {
-	app := &app{}
+	app := &App{}
 	err := app.loadHistory(testHistoryData)
 	assert.NoError(t, err)
 
@@ -76,7 +76,7 @@ func TestHistorySort(t *testing.T) {
 }
 
 func TestHistoryLatestVersion(t *testing.T) {
-	app := &app{}
+	app := &App{}
 	err := app.loadHistory(testHistoryData)
 	assert.NoError(t, err)
 
@@ -88,7 +88,7 @@ func TestHistoryLatestVersion(t *testing.T) {
 func TestHistoryAppend(t *testing.T) {
 	ssh := &StubSSH{}
 	txmanager := &StubTxman{ssh: ssh}
-	app := &app{txmanager: txmanager}
+	app := &App{txmanager: txmanager}
 	err := app.loadHistory(testHistoryData)
 	assert.NoError(t, err)
 

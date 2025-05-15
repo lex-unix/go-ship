@@ -1,38 +1,33 @@
 package cli
 
 import (
-	"os"
+	"context"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"neite.dev/go-ship/internal/config"
-	"neite.dev/go-ship/internal/logging"
+	appCmd "neite.dev/go-ship/internal/cli/app"
+	"neite.dev/go-ship/internal/cli/cliutil"
+	deployCmd "neite.dev/go-ship/internal/cli/deploy"
+	historyCmd "neite.dev/go-ship/internal/cli/history"
+	logsCmd "neite.dev/go-ship/internal/cli/logs"
+	rollbackCmd "neite.dev/go-ship/internal/cli/rollback"
 )
 
-func init() {
-	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Display debugging output in the console")
-	viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
-
-	rootCmd.PersistentFlags().String("host", "", "Host to run command on")
-}
-
-var rootCmd = &cobra.Command{
-	Use:  "shipit",
-	Long: "shipit",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		if err := config.Load(); err != nil {
-			return err
-		}
-		if config.Get().Debug {
-			l := logging.New(os.Stderr, logging.LevelDebug)
-			logging.SetDefault(l)
-		}
-		return nil
-	},
-}
-
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
+func NewRootCmd(ctx context.Context, f *cliutil.Factory) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:  "shipit",
+		Long: "shipit",
 	}
+
+	cmd.AddCommand(deployCmd.NewCmdDeploy(ctx, f))
+	cmd.AddCommand(rollbackCmd.NewCmdRollback(ctx, f))
+	cmd.AddCommand(historyCmd.NewCmdHistory(ctx, f))
+	cmd.AddCommand(logsCmd.NewCmdLogs(ctx, f))
+	cmd.AddCommand(appCmd.NewCmdApp(ctx, f))
+
+	cmd.PersistentFlags().BoolP("debug", "d", false, "Display debugging output in the console")
+	viper.BindPFlag("debug", cmd.PersistentFlags().Lookup("debug"))
+	cmd.PersistentFlags().String("host", "", "Host to run command on")
+
+	return cmd
 }
