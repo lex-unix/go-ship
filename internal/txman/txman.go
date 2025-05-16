@@ -3,66 +3,50 @@ package txman
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 
 	"neite.dev/go-ship/internal/exec/sshexec"
-	"neite.dev/go-ship/internal/lazy"
 	"neite.dev/go-ship/internal/logging"
 )
 
+// Callback defines a function signature for operations executed on a remote host
+// using an SSH client. It's typically used for individual, non-transactional commands
+// or as the building block for forward and rollback operations within a transaction.
+type Callback func(ctx context.Context, client sshexec.Service) error
+
+// TxCallback defines the function signature for orchestrating a series of transactional
+// steps on a specific host. It is provided by the user to BeginTransaction.
+type TxCallback func(ctx context.Context, tx Transaction) error
+
+// RollbackFunc defines the function signature for the globally aggregated rollback operation
+// returned by BeginTransaction. Calling this function will attempt to execute all
+// registered rollback steps across all relevant hosts for a transaction that failed
+// or needs to be manually rolled back.
+type RollbackFunc func(ctx context.Context) error
+
 type Service interface {
-	// Tx runs each transaction on a remote host.
-	// If a transaction fails or a ctx is canceled, it will cancel every pending transactions and start rollback phase.
-	Tx(ctx context.Context, transactions []Transaction) error
+	// BeginTransaction executes passed callback on each remote host in transaction.
+	// If transaction succeeded, the returned error is nil and rollback function is nil or no-op
+	// If a command fails or ctx is canceled, returned error is not nil and rollback function can be called
+	// to perform a rollback.
+	BeginTransaction(ctx context.Context, callback TxCallback) (RollbackFunc, error)
 
 	// Execute runs a provided callback on a each remote host.
 	// In case of a command failure, it will continue execution on other hosts.
 	Execute(ctx context.Context, callback Callback) error
-
-	// SetPrimaryHost restricts the execution of subsequent 'Tx' or 'Execute' calls to the specified host.
-	//
-	// It returns error if the provided host was not found in config file.
-	SetPrimaryHost(host string) error
-}
-
-type Callback func(ctx context.Context, client sshexec.Service) error
-
-type Transaction struct {
-	Name         string
-	ForwardFunc  Callback
-	RollbackFunc Callback
-}
-
-type Sequence struct {
-	CommandFunc Callback
 }
 
 type txman struct {
 	// clients stores connections to remote host
 	clients map[string]sshexec.Service
 
-	// lazyClients stores connection functions to clients
-	// that must be called during 'Tx' or 'Execute'
-	lazyClients map[string]*lazy.Lazy[sshexec.Service]
-
-	// state holds state of each remote host, e.g. completed steps
-	state map[string]*state
-
 	wg sync.WaitGroup
-}
-
-type state struct {
-	host              string
-	lastCompletedStep int
 }
 
 func New(conns ...sshexec.Service) *txman {
 	m := &txman{
-		lazyClients: make(map[string]*lazy.Lazy[sshexec.Service]),
-		clients:     make(map[string]sshexec.Service, len(conns)),
-		state:       make(map[string]*state),
-		wg:          sync.WaitGroup{},
+		clients: make(map[string]sshexec.Service, len(conns)),
+		wg:      sync.WaitGroup{},
 	}
 	for _, conn := range conns {
 		m.clients[conn.Host()] = conn
@@ -70,94 +54,87 @@ func New(conns ...sshexec.Service) *txman {
 
 	return m
 }
-
-func (m *txman) Tx(ctx context.Context, transactions []Transaction) error {
+func (m *txman) BeginTransaction(ctx context.Context, callback TxCallback) (RollbackFunc, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	if err := m.connect(); err != nil {
-		return err
+	txs := make([]*transaction, 0, len(m.clients))
+	for host, client := range m.clients {
+		tx := &transaction{
+			client:   client,
+			hostName: host,
+		}
+		txs = append(txs, tx)
 	}
 
-	m.initState()
-
-	m.wg.Add(len(m.clients))
-	for host, client := range m.clients {
-		state := m.state[host]
-
+	var txErr error
+	var txErrMu sync.Mutex
+	for _, tx := range txs {
+		m.wg.Add(1)
 		go func() {
 			defer m.wg.Done()
-			for txStep, tx := range transactions {
-				select {
-				case <-ctx.Done():
-					return
-				default:
-				}
-
-				err := tx.ForwardFunc(ctx, client)
-				if err != nil {
-					cancel()
-					return
-				}
-
-				state.lastCompletedStep = txStep
+			err := callback(ctx, tx)
+			txErrMu.Lock()
+			if err != nil && txErr == nil {
+				txErr = err
+				cancel()
 			}
+			txErrMu.Unlock()
 		}()
 	}
 
 	m.wg.Wait()
 
-	if ctx.Err() != nil {
-		logging.Error("command failed on one of the servers")
-		logging.Info("initiating rollback...")
-
-		for host, client := range m.clients {
-			state := m.state[host]
-			if state.lastCompletedStep == 0 {
+	rollbackFn := func(ctx context.Context) error {
+		var wg sync.WaitGroup
+		rollbackErrCh := make(chan error, len(txs))
+		for _, tx := range txs {
+			if len(tx.rollbackFns) == 0 {
 				continue
 			}
-			m.wg.Add(1)
+			wg.Add(1)
 			go func() {
-				defer m.wg.Done()
-				for i := state.lastCompletedStep; i >= 0; i-- {
-					tx := transactions[i]
-					err := tx.RollbackFunc(ctx, client)
+				defer wg.Done()
+				for i := len(tx.rollbackFns) - 1; i >= 0; i-- {
+					select {
+					case <-ctx.Done():
+						return
+					default:
+					}
+					rollback := tx.rollbackFns[i]
+					err := rollback(ctx, tx.client)
 					if err != nil {
-						logging.ErrorHostf(host, "failed rollback step %q: %s", tx.Name, err)
-					} else {
-						logging.InfoHostf(host, "completed rollback step %q", tx.Name)
+						rollbackErrCh <- err
+						return
 					}
 				}
 			}()
 		}
 
-		m.wg.Wait()
-		logging.Info("rollack phase completed")
-		return fmt.Errorf("rolled back transaction: %w", ctx.Err())
+		go func() {
+			wg.Wait()
+			close(rollbackErrCh)
+		}()
+
+		errs := make([]error, 0)
+		for err := range rollbackErrCh {
+			errs = append(errs, err)
+		}
+		if len(errs) != 0 {
+			return errors.Join(errs...)
+		}
+		return nil
+
 	}
 
-	return nil
-}
-
-func (m *txman) RegisterClient(host string, lazyClient *lazy.Lazy[sshexec.Service]) {
-	m.lazyClients[host] = lazyClient
-}
-
-func (m *txman) SetPrimaryHost(host string) error {
-	primaryClient, registerd := m.lazyClients[host]
-	if !registerd {
-		return fmt.Errorf("host %s was not found in configuration file", host)
+	if txErr != nil {
+		return rollbackFn, txErr
 	}
-	clear(m.lazyClients)
-	m.lazyClients[host] = primaryClient
-	return nil
+
+	return rollbackFn, nil
 }
 
 func (m *txman) Execute(ctx context.Context, callback Callback) error {
-	if err := m.connect(); err != nil {
-		return err
-	}
-
 	errCh := make(chan error, len(m.clients))
 	m.wg.Add(len(m.clients))
 	for host, client := range m.clients {
@@ -180,30 +157,10 @@ func (m *txman) Execute(ctx context.Context, callback Callback) error {
 	for err := range errCh {
 		errs = append(errs, err)
 	}
+
 	if len(errs) > 0 {
 		return errors.Join(errs...)
 	}
 
-	return nil
-}
-
-func (m *txman) initState() {
-	clear(m.state)
-	for host := range m.clients {
-		m.state[host] = &state{
-			host:              host,
-			lastCompletedStep: -1,
-		}
-	}
-}
-
-func (m *txman) connect() error {
-	for host, lazyClient := range m.lazyClients {
-		client, err := lazyClient.Load()
-		if err != nil {
-			return fmt.Errorf("faield to connect to host %s: %s", host, err)
-		}
-		m.clients[host] = client
-	}
 	return nil
 }

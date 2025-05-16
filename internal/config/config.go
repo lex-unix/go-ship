@@ -16,6 +16,7 @@ var cfg *Config
 // default values
 const (
 	appName               = "shipit"
+	defaultDockerfilePath = "."
 	defaultSSHPort        = 22
 	defaultSSHUser        = "root"
 	defaultProxyName      = "traefik"
@@ -57,25 +58,33 @@ type Registry struct {
 	Password string `mapstructure:"password"`
 }
 
-type Config struct {
-	Service    string            `mapstructure:"service"`
-	Image      string            `mapstructure:"image"`
-	Dockerfile string            `mapstructure:"dockerfile"`
-	Servers    []string          `mapstructure:"servers"`
-	SSH        SSH               `mapstructure:"ssh"`
-	Registry   Registry          `mapstructure:"registry"`
-	Proxy      Proxy             `mapstructure:"proxy"`
-	Debug      bool              `mapstructure:"debug"`
-	Secrets    map[string]string `mapstructure:"secrets"`
+type Transaction struct {
+	Bypass bool `mapstructure:"bypass"`
 }
 
-func Load() error {
+type Config struct {
+	AppName     string
+	Service     string            `mapstructure:"service"`
+	Image       string            `mapstructure:"image"`
+	Dockerfile  string            `mapstructure:"dockerfile"`
+	Transaction Transaction       `mapstructure:"transaction"`
+	Servers     []string          `mapstructure:"servers"`
+	Host        string            `mapstructure:"host"`
+	SSH         SSH               `mapstructure:"ssh"`
+	Registry    Registry          `mapstructure:"registry"`
+	Proxy       Proxy             `mapstructure:"proxy"`
+	Debug       bool              `mapstructure:"debug"`
+	Secrets     map[string]string `mapstructure:"secrets"`
+}
+
+func Load() (*Config, error) {
 	viper.SetConfigName(appName)
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath(".")
 
-	viper.SetDefault("ssh.port", 22)
-	viper.SetDefault("ssh.user", "root")
+	viper.SetDefault("transaction.bypass", false)
+	viper.SetDefault("ssh.port", defaultSSHPort)
+	viper.SetDefault("ssh.user", defaultSSHUser)
 	viper.SetDefault("proxy.name", defaultProxyName)
 	viper.SetDefault("proxy.image", defaultProxyImage)
 	viper.SetDefault("proxy.labels", defaultProxyLabels)
@@ -86,15 +95,17 @@ func Load() error {
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			return ErrNotExists
+			return nil, ErrNotExists
 		} else {
-			return fmt.Errorf("failed to read config file: %w", err)
+			return nil, fmt.Errorf("failed to read config file: %w", err)
 		}
 	}
 
-	cfg = &Config{}
+	cfg = &Config{
+		AppName: appName,
+	}
 	if err := viper.Unmarshal(cfg); err != nil {
-		return fmt.Errorf("failed to parse config: %w", err)
+		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
 
 	for k, v := range cfg.Secrets {
@@ -103,12 +114,16 @@ func Load() error {
 		}
 	}
 
+	if err := Validate(); err != nil {
+		return nil, err
+	}
+
 	if traefikLabels := viper.GetStringMap("traefik.labels"); viper.IsSet("traefik.labels") {
 		mergeMaps(traefikLabels, defaultProxyLabels)
 		cfg.Proxy.Labels = traefikLabels
 	}
 
-	return nil
+	return cfg, nil
 }
 
 func Validate() error {

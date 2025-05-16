@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"os"
 	"slices"
 	"sort"
 	"time"
@@ -16,16 +17,11 @@ import (
 	"neite.dev/go-ship/internal/exec/sshexec"
 	"neite.dev/go-ship/internal/logging"
 	"neite.dev/go-ship/internal/stream"
+	"neite.dev/go-ship/internal/template"
 	"neite.dev/go-ship/internal/txman"
 )
 
-type Server struct {
-	Addr string
-}
-
 type App struct {
-	servers []Server
-
 	txmanager txman.Service
 	lexec     localexec.Service
 
@@ -36,19 +32,15 @@ type App struct {
 
 type Option func(*App)
 
-func New(txmanager txman.Service, lexec localexec.Service, options ...Option) *App {
-	cfg := config.Get()
-	servers := make([]Server, len(cfg.Servers))
-	for i, server := range cfg.Servers {
-		servers[i] = Server{
-			Addr: server,
-		}
+func WithTxManager(txmanager txman.Service) Option {
+	return func(a *App) {
+		a.txmanager = txmanager
 	}
+}
 
+func New(lexec localexec.Service, options ...Option) *App {
 	a := &App{
-		txmanager:       txmanager,
 		lexec:           lexec,
-		servers:         servers,
 		historyFilePath: defautlHistoryFilePath,
 		historySorted:   false,
 	}
@@ -74,6 +66,10 @@ func generateRandomString(length int) string {
 
 func (app *App) Deploy(ctx context.Context) error {
 	cfg := config.Get()
+	err := app.LoadHistory(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to read history at %s: %w", app.historyFilePath, err)
+	}
 
 	// FIXME: should use commit hash for this
 	currentVersion := app.LatestVersion()
@@ -87,7 +83,8 @@ func (app *App) Deploy(ctx context.Context) error {
 	for k, v := range cfg.Secrets {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
-	err := app.lexec.Run(ctx, command.BuildImage(imgWithTag, cfg.Dockerfile, cfg.Secrets), localexec.WithEnv(env))
+
+	err = app.lexec.Run(ctx, command.BuildImage(imgWithTag, cfg.Dockerfile, cfg.Secrets), localexec.WithEnv(env))
 	if err != nil {
 		return fmt.Errorf("failed to build image %s: %w", imgWithTag, err)
 	}
@@ -102,35 +99,38 @@ func (app *App) Deploy(ctx context.Context) error {
 		return fmt.Errorf("failed to push %s to %s: %w", imgWithTag, cfg.Registry.Server, err)
 	}
 
-	err = app.LoadHistory(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to read history at %s: %w", app.historyFilePath, err)
+	rollback, err := app.txmanager.BeginTransaction(ctx, func(ctx context.Context, tx txman.Transaction) error {
+		err := tx.Do(ctx, PullImage(registryImg), nil)
+		if err != nil {
+			return err
+		}
+		err = tx.Do(ctx, StopContainer(currentContainer), StartContainer(currentContainer))
+		if err != nil {
+			return err
+		}
+		err = tx.Do(ctx, RunContainer(registryImg, newContainer), StopContainer(newContainer))
+		if err != nil {
+			return err
+		}
+
+		err = tx.Do(ctx, app.AppendVersion(newVersion), nil)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil && cfg.Transaction.Bypass {
+		if cfg.Transaction.Bypass {
+			return err
+		}
+		if err := rollback(ctx); err != nil {
+			return err
+		}
 	}
 
-	transactions := []txman.Transaction{
-		{
-			Name:         "Pull image",
-			ForwardFunc:  PullImage(registryImg),
-			RollbackFunc: rollbackNoop,
-		},
-		{
-			Name:         "Stop old container",
-			ForwardFunc:  StopContainer(currentContainer),
-			RollbackFunc: StartContainer(currentContainer),
-		},
-		{
-			Name:         "Start new container",
-			ForwardFunc:  RunContainer(registryImg, newContainer),
-			RollbackFunc: StopContainer(newContainer),
-		},
-		{
-			Name:         "Save server state",
-			ForwardFunc:  app.AppendVersion(newVersion),
-			RollbackFunc: rollbackNoop,
-		},
-	}
-
-	return app.txmanager.Tx(ctx, transactions)
+	return nil
 }
 
 func (app *App) Rollback(ctx context.Context, version string) error {
@@ -155,25 +155,33 @@ func (app *App) Rollback(ctx context.Context, version string) error {
 	currentContainer := fmt.Sprintf("%s-%s", service, currentVersion)
 	newContainer := fmt.Sprintf("%s-%s", service, version)
 
-	transactions := []txman.Transaction{
-		{
-			Name:         "Stop current container",
-			ForwardFunc:  StopContainer(currentContainer),
-			RollbackFunc: StartContainer(currentContainer),
-		},
-		{
-			Name:         "Start new container",
-			ForwardFunc:  StartContainer(newContainer),
-			RollbackFunc: StopContainer(newContainer),
-		},
-		{
-			Name:         "Update server state",
-			ForwardFunc:  WriteToRemoteFile(app.historyFilePath, history),
-			RollbackFunc: rollbackNoop,
-		},
+	rollback, err := app.txmanager.BeginTransaction(ctx, func(ctx context.Context, tx txman.Transaction) error {
+		err := tx.Do(ctx, StopContainer(currentContainer), StartContainer(currentContainer))
+		if err != nil {
+			return err
+		}
+		err = tx.Do(ctx, StartContainer(newContainer), StopContainer(newContainer))
+		if err != nil {
+			return err
+		}
+		err = tx.Do(ctx, WriteToRemoteFile(app.historyFilePath, history), nil)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	if err != nil && cfg.Transaction.Bypass {
+		if cfg.Transaction.Bypass {
+			return err
+		}
+		if err := rollback(ctx); err != nil {
+			return err
+		}
 	}
 
-	return app.txmanager.Tx(ctx, transactions)
+	return nil
 }
 
 func (app *App) History(ctx context.Context, sortDir string) ([]History, error) {
@@ -288,6 +296,18 @@ func (app *App) RegistryLogout(ctx context.Context) error {
 		return err
 	}
 
+	return nil
+}
+
+func (app *App) CreateConfig() error {
+	data, err := template.TemplateFS.ReadFile("templates/shipit.yaml")
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile("shipit.yaml", data, 0644)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

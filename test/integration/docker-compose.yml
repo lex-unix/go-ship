@@ -1,4 +1,4 @@
-name: "goship-test"
+name: "shipit-test"
 services:
     shared:
         build:

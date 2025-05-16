@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	MAX_RETRY = 5
-	WAIT_TIME = 5 * time.Second
+	maxRetry = 5
+	waitTime = 5 * time.Second
 )
 
 func dockerCompose(t *testing.T, composeCmd string) string {
@@ -48,14 +48,14 @@ func deployerExec(t *testing.T, cmd string, workdir string) string {
 	return dockerCompose(t, fmt.Sprintf("exec --workdir %s deployer %s", workdir, cmd))
 }
 
-func goship(t *testing.T, cmd string) string {
-	return deployerExec(t, fmt.Sprintf("/usr/local/bin/goship %s", cmd), "/app")
+func shipit(t *testing.T, cmd string) string {
+	return deployerExec(t, fmt.Sprintf("/usr/local/bin/shipit %s", cmd), "/app")
 }
 
 func setup(t *testing.T) {
 	t.Log("Setting up docker compose project")
 	dockerCompose(t, "up -d --build")
-	waitForHealthy(t, MAX_RETRY, WAIT_TIME)
+	waitForHealthy(t, maxRetry, waitTime)
 	t.Log("Setting up deployer container")
 	setupDeployer(t)
 	t.Log("Setup successful")
@@ -71,7 +71,7 @@ func setupDeployer(t *testing.T) {
 }
 
 func waitForHealthy(t *testing.T, maxRetry int, waitTime time.Duration) {
-	for i := 0; i < maxRetry; i++ {
+	for range maxRetry {
 		out := dockerCompose(t, "ps -a | tail -n +2 | grep -v '(healthy)' | wc -l")
 		out = strings.TrimSpace(out)
 		if out == "0" {

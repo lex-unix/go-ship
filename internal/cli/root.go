@@ -10,6 +10,7 @@ import (
 	"neite.dev/go-ship/internal/cli/cliutil"
 	deployCmd "neite.dev/go-ship/internal/cli/deploy"
 	historyCmd "neite.dev/go-ship/internal/cli/history"
+	initCmd "neite.dev/go-ship/internal/cli/init"
 	logsCmd "neite.dev/go-ship/internal/cli/logs"
 	proxyCmd "neite.dev/go-ship/internal/cli/proxy"
 	registryCmd "neite.dev/go-ship/internal/cli/registry"
@@ -23,13 +24,7 @@ func NewRootCmd(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 		Long: "shipit",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if viper.GetBool("debug") {
-				l := logging.New(os.Stderr, logging.LevelDebug)
-				logging.SetDefault(l)
-			}
-			if host, _ := cmd.Flags().GetString("host"); host != "" {
-				if err := f.Txman.SetPrimaryHost(host); err != nil {
-					return err
-				}
+				logging.SetDefault(logging.New(os.Stderr, logging.LevelDebug))
 			}
 
 			return nil
@@ -43,10 +38,14 @@ func NewRootCmd(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 	cmd.AddCommand(appCmd.NewCmdApp(ctx, f))
 	cmd.AddCommand(registryCmd.NewCmdRegistry(ctx, f))
 	cmd.AddCommand(proxyCmd.NewCmdProxy(ctx, f))
+	cmd.AddCommand(initCmd.NewCmdInit(ctx, f))
 
 	cmd.PersistentFlags().BoolP("debug", "d", false, "Display debugging output in the console")
 	viper.BindPFlag("debug", cmd.PersistentFlags().Lookup("debug"))
 	cmd.PersistentFlags().String("host", "", "Host to run command on")
+	viper.BindPFlag("host", cmd.PersistentFlags().Lookup("host"))
+	cmd.PersistentFlags().Bool("force", false, "Force non-transactional execution")
+	viper.BindPFlag("transaction.bypass", cmd.PersistentFlags().Lookup("force"))
 
 	return cmd
 }

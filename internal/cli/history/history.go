@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/spf13/cobra"
+	"neite.dev/go-ship/internal/app"
 	"neite.dev/go-ship/internal/cli/cliutil"
 )
 
@@ -19,7 +20,13 @@ func NewCmdHistory(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 				return fmt.Errorf("sort value can be either 'desc' or 'asc' and you passed: %s", sortDir)
 			}
 
-			history, err := f.App.History(ctx, sortDir)
+			txman, err := f.Txman()
+			if err != nil {
+				return err
+			}
+
+			app := f.App(app.WithTxManager(txman))
+			history, err := app.History(ctx, sortDir)
 			if err != nil {
 				return err
 			}

@@ -7,6 +7,7 @@ import (
 	"sort"
 	"time"
 
+	"neite.dev/go-ship/internal/config"
 	"neite.dev/go-ship/internal/exec/sshexec"
 	"neite.dev/go-ship/internal/logging"
 	"neite.dev/go-ship/internal/txman"
@@ -39,7 +40,8 @@ func (app *App) LoadHistory(ctx context.Context) error {
 	if app.history != nil {
 		return nil
 	}
-	resultsCh := make(chan RemoteFileContent, len(app.servers))
+	servers := config.Get().Servers
+	resultsCh := make(chan RemoteFileContent, len(servers))
 	defer close(resultsCh)
 	err := app.txmanager.Execute(ctx, ReadRemoteFile(app.historyFilePath, resultsCh))
 	if err != nil {
@@ -47,7 +49,7 @@ func (app *App) LoadHistory(ctx context.Context) error {
 	}
 
 	contentByHost := make(map[string][]byte)
-	for range len(app.servers) {
+	for range len(servers) {
 		select {
 		case <-ctx.Done():
 			return fmt.Errorf("context timeout or canceled")
@@ -60,8 +62,8 @@ func (app *App) LoadHistory(ctx context.Context) error {
 		}
 	}
 
-	if len(app.servers) != len(contentByHost) || len(contentByHost) == 0 {
-		return fmt.Errorf("expected to read file on %d hosts, but got %d", len(app.servers), len(contentByHost))
+	if len(servers) != len(contentByHost) || len(contentByHost) == 0 {
+		return fmt.Errorf("expected to read file on %d hosts, but got %d", len(servers), len(contentByHost))
 	}
 
 	// TODO: compare histories from hosts and choose the first one if okay

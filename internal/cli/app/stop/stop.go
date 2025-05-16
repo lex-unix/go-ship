@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
+	"neite.dev/go-ship/internal/app"
 	"neite.dev/go-ship/internal/cli/cliutil"
 	"neite.dev/go-ship/internal/logging"
 )
@@ -13,7 +14,13 @@ func NewCmdStop(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 		Use:   "stop",
 		Short: "Stop app container on server",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := f.App.StopService(ctx); err != nil {
+			txman, err := f.Txman()
+			if err != nil {
+				return err
+			}
+
+			app := f.App(app.WithTxManager(txman))
+			if err := app.StopService(ctx); err != nil {
 				return err
 			}
 			logging.Info("container is stopped on all servers")

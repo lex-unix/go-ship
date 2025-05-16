@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"neite.dev/go-ship/internal/app"
 	"neite.dev/go-ship/internal/cli/cliutil"
 	"neite.dev/go-ship/internal/logging"
 )
@@ -18,7 +19,14 @@ func NewCmdRollback(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 				return fmt.Errorf("the version of the app to rollback to is required")
 			}
 			version := args[0]
-			if err := f.App.Rollback(ctx, version); err != nil {
+
+			txman, err := f.Txman()
+			if err != nil {
+				return err
+			}
+
+			app := f.App(app.WithTxManager(txman))
+			if err := app.Rollback(ctx, version); err != nil {
 				return err
 			}
 			logging.Infof("app rolled back to version %s", version)
