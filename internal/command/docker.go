@@ -5,8 +5,17 @@ import (
 	"strings"
 )
 
-func BuildImage(img, dockerfile string) string {
-	return fmt.Sprintf("docker build -t %s %s", img, dockerfile)
+func BuildImage(img, dockerfile string, secrets map[string]string) string {
+	var sb strings.Builder
+	sb.WriteString("docker buildx build -t ")
+	sb.WriteString(img)
+	for k := range secrets {
+		sb.WriteString(fmt.Sprintf(" --secret id=%s", k))
+	}
+	sb.WriteString(" ")
+	sb.WriteString(dockerfile)
+
+	return sb.String()
 }
 
 func TagImage(img, registryImg string) string {
@@ -74,4 +83,12 @@ func ContainerLogs(container string, follow bool, lines int, since string) strin
 	sb.WriteString(container)
 
 	return sb.String()
+}
+
+func RegistryLogin(registry, user, password string) string {
+	return fmt.Sprintf("docker login %s -u %s -p %s", registry, user, password)
+}
+
+func RegistryLogout() string {
+	return fmt.Sprintf("docker logout")
 }

@@ -13,6 +13,7 @@ import (
 	"neite.dev/go-ship/internal/config"
 	"neite.dev/go-ship/internal/exec/localexec"
 	"neite.dev/go-ship/internal/exec/sshexec"
+	"neite.dev/go-ship/internal/lazy"
 	"neite.dev/go-ship/internal/logging"
 	"neite.dev/go-ship/internal/txman"
 )
@@ -34,20 +35,11 @@ func main() {
 	}
 
 	cfg := config.Get()
-	if cfg.Debug {
-		l := logging.New(os.Stderr, logging.LevelDebug)
-		logging.SetDefault(l)
-	}
-
 	lexec := localexec.New()
 	txmanager := txman.New()
 	for _, server := range cfg.Servers {
-		client, err := sshexec.New(server, cfg.SSH.User, cfg.SSH.Port)
-		if err != nil {
-			logging.Errorf("failed to establish connection with %s: %s", server, err)
-			os.Exit(1)
-		}
-		txmanager.RegisterHost(server, client)
+		lazyClient := lazy.New(func() (sshexec.Service, error) { return sshexec.New(server, cfg.SSH.User, cfg.SSH.Port) })
+		txmanager.RegisterClient(server, lazyClient)
 	}
 
 	app := app.New(txmanager, lexec)

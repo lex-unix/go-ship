@@ -1,16 +1,13 @@
 package app
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"math/rand"
 	"slices"
 	"sort"
-	"sync"
 	"time"
 
 	"neite.dev/go-ship/internal/command"
@@ -78,11 +75,6 @@ func generateRandomString(length int) string {
 func (app *App) Deploy(ctx context.Context) error {
 	cfg := config.Get()
 
-	err := app.LoadHistory(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to read history at %s: %w", app.historyFilePath, err)
-	}
-
 	// FIXME: should use commit hash for this
 	currentVersion := app.LatestVersion()
 	newVersion := generateRandomString(10)
@@ -91,7 +83,11 @@ func (app *App) Deploy(ctx context.Context) error {
 	currentContainer := fmt.Sprintf("%s-%s", cfg.Service, currentVersion)
 	newContainer := fmt.Sprintf("%s-%s", cfg.Service, newVersion)
 
-	err = app.lexec.Run(ctx, command.BuildImage(imgWithTag, cfg.Dockerfile))
+	env := make([]string, 0)
+	for k, v := range cfg.Secrets {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
+	}
+	err := app.lexec.Run(ctx, command.BuildImage(imgWithTag, cfg.Dockerfile, cfg.Secrets), localexec.WithEnv(env))
 	if err != nil {
 		return fmt.Errorf("failed to build image %s: %w", imgWithTag, err)
 	}
@@ -104,6 +100,11 @@ func (app *App) Deploy(ctx context.Context) error {
 	err = app.lexec.Run(ctx, command.PushImage(registryImg))
 	if err != nil {
 		return fmt.Errorf("failed to push %s to %s: %w", imgWithTag, cfg.Registry.Server, err)
+	}
+
+	err = app.LoadHistory(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to read history at %s: %w", app.historyFilePath, err)
 	}
 
 	transactions := []txman.Transaction{
@@ -224,88 +225,6 @@ func (app *App) ShowAppInfo(ctx context.Context) error {
 	return nil
 }
 
-type logLine struct {
-	host string
-	line string
-}
-
-type logWriter struct {
-	out        bytes.Buffer
-	mu         sync.RWMutex
-	pipeWriter *io.PipeWriter
-	wg         sync.WaitGroup
-	lineCh     chan<- logLine
-}
-
-func newLogWriter(host string, linesCh chan<- logLine) *logWriter {
-	pipeReader, pipeWriter := io.Pipe()
-	w := &logWriter{
-		lineCh:     linesCh,
-		pipeWriter: pipeWriter,
-	}
-	w.wg.Add(1)
-	go func() {
-		defer w.wg.Done()
-		defer pipeReader.Close()
-		scanner := bufio.NewScanner(pipeReader)
-		for scanner.Scan() {
-			line := scanner.Text()
-			w.lineCh <- logLine{host: host, line: line}
-		}
-		if err := scanner.Err(); err != nil {
-			logging.Errorf("error from pipereader: %s", err)
-		}
-	}()
-	return w
-}
-
-func (w *logWriter) Write(p []byte) (int, error) {
-	return w.pipeWriter.Write(p)
-}
-
-func (w *logWriter) Close() error {
-	return w.pipeWriter.Close()
-}
-
-type StreamProcessor struct {
-	host       string
-	pipeWriter *io.PipeWriter
-	wg         sync.WaitGroup
-	lineCh     chan logLine
-}
-
-func NewStream(host string) (*StreamProcessor, <-chan logLine) {
-	pr, pw := io.Pipe()
-	s := &StreamProcessor{
-		host:       host,
-		pipeWriter: pw,
-		lineCh:     make(chan logLine, 50),
-	}
-
-	s.wg.Add(1)
-	go func() {
-		defer s.wg.Done()
-		defer pr.Close()
-		scanner := bufio.NewScanner(pr)
-		for scanner.Scan() {
-			s.lineCh <- logLine{host: host, line: scanner.Text()}
-		}
-		if err := scanner.Err(); err != nil {
-			logging.ErrorHostf(s.host, "scanner error: %s", err)
-		}
-	}()
-
-	return s, s.lineCh
-}
-
-func (s *StreamProcessor) Write(p []byte) (int, error) {
-	return s.pipeWriter.Write(p)
-}
-
-func (s *StreamProcessor) Close() error {
-	return s.pipeWriter.Close()
-}
-
 func (app *App) Logs(ctx context.Context, follow bool, lines int, since string) error {
 	cfg := config.Get()
 	if err := app.LoadHistory(ctx); err != nil {
@@ -373,6 +292,44 @@ func (app *App) StartContainer(ctx context.Context) error {
 		err := client.Run(ctx, command.StartContainer(container))
 		if err != nil {
 			return fmt.Errorf("failed to start container on %s: %w", client.Host(), err)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (app *App) RegistryLogin(ctx context.Context) error {
+	cfg := config.Get()
+
+	registry := cfg.Registry.Server
+	username := cfg.Registry.Username
+	password := cfg.Registry.Password
+
+	err := app.txmanager.Execute(ctx, func(ctx context.Context, client sshexec.Service) error {
+		err := client.Run(ctx, command.RegistryLogin(registry, username, password))
+		if err != nil {
+			return fmt.Errorf("failed to login to registry: %s", err)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (app *App) RegistryLogout(ctx context.Context) error {
+	err := app.txmanager.Execute(ctx, func(ctx context.Context, client sshexec.Service) error {
+		err := client.Run(ctx, command.RegistryLogout())
+		if err != nil {
+			return fmt.Errorf("failed to logout from registry: %s", err)
 		}
 		return nil
 	})

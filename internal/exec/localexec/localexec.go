@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"sync"
 
@@ -12,7 +13,7 @@ import (
 )
 
 type Service interface {
-	Run(ctx context.Context, cmd string) error
+	Run(ctx context.Context, cmd string, options ...Option) error
 }
 
 type Command struct{}
@@ -21,8 +22,29 @@ func New() Command {
 	return Command{}
 }
 
-func (c Command) Run(ctx context.Context, cmd string) error {
+type runOptions struct {
+	env []string
+}
+
+type Option func(options *runOptions)
+
+func WithEnv(env []string) Option {
+	return func(options *runOptions) {
+		options.env = env
+	}
+}
+
+func (c Command) Run(ctx context.Context, cmd string, opts ...Option) error {
+	options := runOptions{
+		env: []string{},
+	}
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	command := exec.CommandContext(ctx, "sh", "-c", cmd)
+	command.Env = os.Environ()
+	command.Env = append(command.Env, options.env...)
 
 	var wg sync.WaitGroup
 	stdout, _ := command.StdoutPipe()

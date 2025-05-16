@@ -58,6 +58,10 @@ func (stub *StubTxman) Execute(ctx context.Context, callback txman.Callback) err
 	return nil
 }
 
+func (stub *StubTxman) SetPrimaryHost(_ string) error {
+	return nil
+}
+
 func TestHistorySort(t *testing.T) {
 	app := &App{}
 	err := app.loadHistory(testHistoryData)

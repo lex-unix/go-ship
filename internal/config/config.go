@@ -4,6 +4,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/spf13/viper"
 	"neite.dev/go-ship/internal/validator"
@@ -55,14 +56,15 @@ type Registry struct {
 }
 
 type Config struct {
-	Service    string   `mapstructure:"service"`
-	Image      string   `mapstructure:"image"`
-	Dockerfile string   `mapstructure:"dockerfile"`
-	Servers    []string `mapstructure:"servers"`
-	SSH        SSH      `mapstructure:"ssh"`
-	Registry   Registry `mapstructure:"registry"`
-	Traefik    Traefik  `mapstructure:"traefik"`
-	Debug      bool     `mapstructure:"debug"`
+	Service    string            `mapstructure:"service"`
+	Image      string            `mapstructure:"image"`
+	Dockerfile string            `mapstructure:"dockerfile"`
+	Servers    []string          `mapstructure:"servers"`
+	SSH        SSH               `mapstructure:"ssh"`
+	Registry   Registry          `mapstructure:"registry"`
+	Traefik    Traefik           `mapstructure:"traefik"`
+	Debug      bool              `mapstructure:"debug"`
+	Secrets    map[string]string `mapstructure:"secrets"`
 }
 
 func Load() error {
@@ -90,6 +92,12 @@ func Load() error {
 	cfg = &Config{}
 	if err := viper.Unmarshal(cfg); err != nil {
 		return fmt.Errorf("failed to parse config: %w", err)
+	}
+
+	for k, v := range cfg.Secrets {
+		if expanded := os.ExpandEnv(v); expanded != "" {
+			cfg.Secrets[k] = expanded
+		}
 	}
 
 	if traefikLabels := viper.GetStringMap("traefik.labels"); viper.IsSet("traefik.labels") {

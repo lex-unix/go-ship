@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"neite.dev/go-ship/internal/exec/sshexec"
+	"neite.dev/go-ship/internal/lazy"
 	"neite.dev/go-ship/internal/logging"
 )
 
@@ -18,6 +19,11 @@ type Service interface {
 	// Execute runs a provided callback on a each remote host.
 	// In case of a command failure, it will continue execution on other hosts.
 	Execute(ctx context.Context, callback Callback) error
+
+	// SetPrimaryHost restricts the execution of subsequent 'Tx' or 'Execute' calls to the specified host.
+	//
+	// It returns error if the provided host was not found in config file.
+	SetPrimaryHost(host string) error
 }
 
 type Callback func(ctx context.Context, client sshexec.Service) error
@@ -36,10 +42,13 @@ type txman struct {
 	// clients stores connections to remote host
 	clients map[string]sshexec.Service
 
+	// lazyClients stores connection functions to clients
+	// that must be called during 'Tx' or 'Execute'
+	lazyClients map[string]*lazy.Lazy[sshexec.Service]
+
 	// state holds state of each remote host, e.g. completed steps
 	state map[string]*state
 
-	mu sync.Mutex
 	wg sync.WaitGroup
 }
 
@@ -50,10 +59,10 @@ type state struct {
 
 func New(conns ...sshexec.Service) *txman {
 	m := &txman{
-		clients: make(map[string]sshexec.Service, len(conns)),
-		state:   make(map[string]*state),
-		mu:      sync.Mutex{},
-		wg:      sync.WaitGroup{},
+		lazyClients: make(map[string]*lazy.Lazy[sshexec.Service]),
+		clients:     make(map[string]sshexec.Service, len(conns)),
+		state:       make(map[string]*state),
+		wg:          sync.WaitGroup{},
 	}
 	for _, conn := range conns {
 		m.clients[conn.Host()] = conn
@@ -62,13 +71,13 @@ func New(conns ...sshexec.Service) *txman {
 	return m
 }
 
-func (m *txman) RegisterHost(addr string, client sshexec.Service) {
-	m.clients[addr] = client
-}
-
 func (m *txman) Tx(ctx context.Context, transactions []Transaction) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	if err := m.connect(); err != nil {
+		return err
+	}
 
 	m.initState()
 
@@ -130,7 +139,25 @@ func (m *txman) Tx(ctx context.Context, transactions []Transaction) error {
 	return nil
 }
 
+func (m *txman) RegisterClient(host string, lazyClient *lazy.Lazy[sshexec.Service]) {
+	m.lazyClients[host] = lazyClient
+}
+
+func (m *txman) SetPrimaryHost(host string) error {
+	primaryClient, registerd := m.lazyClients[host]
+	if !registerd {
+		return fmt.Errorf("host %s was not found in configuration file", host)
+	}
+	clear(m.lazyClients)
+	m.lazyClients[host] = primaryClient
+	return nil
+}
+
 func (m *txman) Execute(ctx context.Context, callback Callback) error {
+	if err := m.connect(); err != nil {
+		return err
+	}
+
 	errCh := make(chan error, len(m.clients))
 	m.wg.Add(len(m.clients))
 	for host, client := range m.clients {
@@ -168,4 +195,15 @@ func (m *txman) initState() {
 			lastCompletedStep: -1,
 		}
 	}
+}
+
+func (m *txman) connect() error {
+	for host, lazyClient := range m.lazyClients {
+		client, err := lazyClient.Load()
+		if err != nil {
+			return fmt.Errorf("faield to connect to host %s: %s", host, err)
+		}
+		m.clients[host] = client
+	}
+	return nil
 }
