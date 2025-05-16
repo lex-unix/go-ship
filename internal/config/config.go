@@ -18,11 +18,12 @@ const (
 	appName               = "shipit"
 	defaultSSHPort        = 22
 	defaultSSHUser        = "root"
-	defaultTraefikImage   = "traefik:v3.1"
+	defaultProxyName      = "traefik"
+	defaultProxyImage     = "traefik:v3.1"
 	defaultRegistryServer = "docker.io"
 )
 
-var defaultTraefikLabels = map[string]any{
+var defaultProxyLabels = map[string]any{
 	"traefik.http.routers.catchall.entryPoints":                  "web",
 	"traefik.http.routers.catchall.rule":                         "'PathPrefix(`/`)'",
 	"traefik.http.routers.catchall.service":                      "unavailable",
@@ -38,7 +39,8 @@ var (
 //go:embed templates/*
 var templateFS embed.FS
 
-type Traefik struct {
+type Proxy struct {
+	Name   string         `mapstructure:"name"`
 	Img    string         `mapstructure:"image"`
 	Args   map[string]any `mapstructure:"args"`
 	Labels map[string]any `mapstructure:"labels"`
@@ -62,7 +64,7 @@ type Config struct {
 	Servers    []string          `mapstructure:"servers"`
 	SSH        SSH               `mapstructure:"ssh"`
 	Registry   Registry          `mapstructure:"registry"`
-	Traefik    Traefik           `mapstructure:"traefik"`
+	Proxy      Proxy             `mapstructure:"proxy"`
 	Debug      bool              `mapstructure:"debug"`
 	Secrets    map[string]string `mapstructure:"secrets"`
 }
@@ -74,8 +76,9 @@ func Load() error {
 
 	viper.SetDefault("ssh.port", 22)
 	viper.SetDefault("ssh.user", "root")
-	viper.SetDefault("traefik.image", defaultTraefikImage)
-	viper.SetDefault("traefik.labels", defaultTraefikLabels)
+	viper.SetDefault("proxy.name", defaultProxyName)
+	viper.SetDefault("proxy.image", defaultProxyImage)
+	viper.SetDefault("proxy.labels", defaultProxyLabels)
 	viper.SetDefault("dockerfile", ".")
 	viper.SetDefault("registry.server", defaultRegistryServer)
 	viper.SetDefault("debug", false)
@@ -101,8 +104,8 @@ func Load() error {
 	}
 
 	if traefikLabels := viper.GetStringMap("traefik.labels"); viper.IsSet("traefik.labels") {
-		mergeMaps(traefikLabels, defaultTraefikLabels)
-		cfg.Traefik.Labels = traefikLabels
+		mergeMaps(traefikLabels, defaultProxyLabels)
+		cfg.Proxy.Labels = traefikLabels
 	}
 
 	return nil

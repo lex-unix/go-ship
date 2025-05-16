@@ -17,12 +17,11 @@ func NewCmdLogs(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 	opts := LogsOptions{}
 	cmd := &cobra.Command{
 		Use:   "logs",
-		Short: "Fetch logs from you container on servers",
+		Short: "Fetch logs from proxy container on servers",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := f.App.ServiceLogs(ctx, opts.Follow, opts.Lines, opts.Since); err != nil {
+			if err := f.App.ProxyLogs(ctx, opts.Follow, opts.Lines, opts.Since); err != nil {
 				return err
 			}
-
 			return nil
 		},
 	}

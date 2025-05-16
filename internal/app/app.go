@@ -130,12 +130,7 @@ func (app *App) Deploy(ctx context.Context) error {
 		},
 	}
 
-	err = app.txmanager.Tx(ctx, transactions)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return app.txmanager.Tx(ctx, transactions)
 }
 
 func (app *App) Rollback(ctx context.Context, version string) error {
@@ -178,11 +173,7 @@ func (app *App) Rollback(ctx context.Context, version string) error {
 		},
 	}
 
-	if err := app.txmanager.Tx(ctx, transactions); err != nil {
-		return err
-	}
-
-	return nil
+	return app.txmanager.Tx(ctx, transactions)
 }
 
 func (app *App) History(ctx context.Context, sortDir string) ([]History, error) {
@@ -225,14 +216,88 @@ func (app *App) ShowAppInfo(ctx context.Context) error {
 	return nil
 }
 
-func (app *App) Logs(ctx context.Context, follow bool, lines int, since string) error {
+func (app *App) ServiceLogs(ctx context.Context, follow bool, lines int, since string) error {
 	cfg := config.Get()
 	if err := app.LoadHistory(ctx); err != nil {
 		return err
 	}
 
 	container := fmt.Sprintf("%s-%s", cfg.Service, app.LatestVersion())
+	return app.logs(ctx, container, follow, lines, since)
+}
 
+func (app *App) ProxyLogs(ctx context.Context, follow bool, lines int, since string) error {
+	container := config.Get().Proxy.Name
+	return app.logs(ctx, container, follow, lines, since)
+}
+
+func (app *App) StopService(ctx context.Context) error {
+	cfg := config.Get()
+	if err := app.LoadHistory(ctx); err != nil {
+		return err
+	}
+	container := fmt.Sprintf("%s-%s", cfg.Service, app.LatestVersion())
+	return app.stopContainer(ctx, container)
+}
+
+func (app *App) StopProxy(ctx context.Context) error {
+	container := config.Get().Proxy.Name
+	return app.stopContainer(ctx, container)
+}
+
+func (app *App) StartService(ctx context.Context) error {
+	cfg := config.Get()
+	if err := app.LoadHistory(ctx); err != nil {
+		return err
+	}
+	container := fmt.Sprintf("%s-%s", cfg.Service, app.LatestVersion())
+	return app.startContainer(ctx, container)
+}
+
+func (app *App) StartProxy(ctx context.Context) error {
+	container := config.Get().Proxy.Name
+	return app.startContainer(ctx, container)
+}
+
+func (app *App) RegistryLogin(ctx context.Context) error {
+	cfg := config.Get()
+
+	registry := cfg.Registry.Server
+	username := cfg.Registry.Username
+	password := cfg.Registry.Password
+
+	return app.txmanager.Execute(ctx, func(ctx context.Context, client sshexec.Service) error {
+		err := client.Run(ctx, command.RegistryLogin(registry, username, password))
+		if err != nil {
+			return fmt.Errorf("failed to login to registry: %s", err)
+		}
+		return nil
+	})
+}
+
+func (app *App) RegistryLogout(ctx context.Context) error {
+	err := app.txmanager.Execute(ctx, func(ctx context.Context, client sshexec.Service) error {
+		err := client.Run(ctx, command.RegistryLogout())
+		if err != nil {
+			return fmt.Errorf("failed to logout from registry: %s", err)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (app *App) logs(
+	ctx context.Context,
+	container string,
+	follow bool,
+	lines int,
+	since string,
+) error {
 	err := app.txmanager.Execute(ctx, func(ctx context.Context, client sshexec.Service) error {
 		var lineHandler stream.LineHandler = func(line []byte) {
 			logging.InfoHost(client.Host(), string(line))
@@ -254,89 +319,26 @@ func (app *App) Logs(ctx context.Context, follow bool, lines int, since string) 
 	if err != nil {
 		return fmt.Errorf("one or more hosts failed to stream logs: %w", err)
 	}
-	return nil
-}
-
-func (app *App) StopContainer(ctx context.Context) error {
-	cfg := config.Get()
-	if err := app.LoadHistory(ctx); err != nil {
-		return err
-	}
-
-	container := fmt.Sprintf("%s-%s", cfg.Service, app.LatestVersion())
-
-	err := app.txmanager.Execute(ctx, func(ctx context.Context, client sshexec.Service) error {
-		err := client.Run(ctx, command.StopContainer(container))
-		if err != nil {
-			return fmt.Errorf("failed to stop container on %s: %w", client.Host(), err)
-		}
-		return nil
-	})
-
-	if err != nil {
-		return err
-	}
 
 	return nil
 }
 
-func (app *App) StartContainer(ctx context.Context) error {
-	cfg := config.Get()
-	if err := app.LoadHistory(ctx); err != nil {
-		return err
-	}
-
-	container := fmt.Sprintf("%s-%s", cfg.Service, app.LatestVersion())
-
-	err := app.txmanager.Execute(ctx, func(ctx context.Context, client sshexec.Service) error {
+func (app *App) startContainer(ctx context.Context, container string) error {
+	return app.txmanager.Execute(ctx, func(ctx context.Context, client sshexec.Service) error {
 		err := client.Run(ctx, command.StartContainer(container))
 		if err != nil {
 			return fmt.Errorf("failed to start container on %s: %w", client.Host(), err)
 		}
 		return nil
 	})
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
-func (app *App) RegistryLogin(ctx context.Context) error {
-	cfg := config.Get()
-
-	registry := cfg.Registry.Server
-	username := cfg.Registry.Username
-	password := cfg.Registry.Password
-
-	err := app.txmanager.Execute(ctx, func(ctx context.Context, client sshexec.Service) error {
-		err := client.Run(ctx, command.RegistryLogin(registry, username, password))
+func (app *App) stopContainer(ctx context.Context, container string) error {
+	return app.txmanager.Execute(ctx, func(ctx context.Context, client sshexec.Service) error {
+		err := client.Run(ctx, command.StopContainer(container))
 		if err != nil {
-			return fmt.Errorf("failed to login to registry: %s", err)
+			return fmt.Errorf("failed to stop container on %s: %w", client.Host(), err)
 		}
 		return nil
 	})
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (app *App) RegistryLogout(ctx context.Context) error {
-	err := app.txmanager.Execute(ctx, func(ctx context.Context, client sshexec.Service) error {
-		err := client.Run(ctx, command.RegistryLogout())
-		if err != nil {
-			return fmt.Errorf("failed to logout from registry: %s", err)
-		}
-		return nil
-	})
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }

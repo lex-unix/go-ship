@@ -11,6 +11,7 @@ import (
 	deployCmd "neite.dev/go-ship/internal/cli/deploy"
 	historyCmd "neite.dev/go-ship/internal/cli/history"
 	logsCmd "neite.dev/go-ship/internal/cli/logs"
+	proxyCmd "neite.dev/go-ship/internal/cli/proxy"
 	registryCmd "neite.dev/go-ship/internal/cli/registry"
 	rollbackCmd "neite.dev/go-ship/internal/cli/rollback"
 	"neite.dev/go-ship/internal/logging"
@@ -41,6 +42,7 @@ func NewRootCmd(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 	cmd.AddCommand(logsCmd.NewCmdLogs(ctx, f))
 	cmd.AddCommand(appCmd.NewCmdApp(ctx, f))
 	cmd.AddCommand(registryCmd.NewCmdRegistry(ctx, f))
+	cmd.AddCommand(proxyCmd.NewCmdProxy(ctx, f))
 
 	cmd.PersistentFlags().BoolP("debug", "d", false, "Display debugging output in the console")
 	viper.BindPFlag("debug", cmd.PersistentFlags().Lookup("debug"))

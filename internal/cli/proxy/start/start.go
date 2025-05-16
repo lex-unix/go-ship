@@ -1,4 +1,4 @@
-package stop
+package start
 
 import (
 	"context"
@@ -8,15 +8,15 @@ import (
 	"neite.dev/go-ship/internal/logging"
 )
 
-func NewCmdStop(ctx context.Context, f *cliutil.Factory) *cobra.Command {
+func NewCmdStart(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "stop",
-		Short: "Stop app container on server",
+		Use:   "start",
+		Short: "Start existing proxy container on servers",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := f.App.StopService(ctx); err != nil {
+			if err := f.App.StartProxy(ctx); err != nil {
 				return err
 			}
-			logging.Info("container is stopped on all servers")
+			logging.Info("proxy container started on servers")
 			return nil
 		},
 	}

@@ -10,13 +10,12 @@ import (
 
 func NewCmdStop(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "stop",
-		Short: "Stop app container on server",
+		Use: "stop",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := f.App.StopService(ctx); err != nil {
-				return err
+			if err := f.App.StopProxy(ctx); err != nil {
+				return nil
 			}
-			logging.Info("container is stopped on all servers")
+			logging.Info("proxy container stopped on servers")
 			return nil
 		},
 	}

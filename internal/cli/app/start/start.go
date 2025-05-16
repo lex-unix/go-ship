@@ -13,7 +13,7 @@ func NewCmdStart(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 		Use:   "start",
 		Short: "Start app container on servers",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := f.App.StartContainer(ctx); err != nil {
+			if err := f.App.StartService(ctx); err != nil {
 				return err
 			}
 			logging.Info("app container started on servers")
