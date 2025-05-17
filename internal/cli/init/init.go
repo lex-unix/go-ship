@@ -28,5 +28,7 @@ func NewCmdInit(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 		},
 	}
 
+	cliutil.DisableConfigLoading(cmd)
+
 	return cmd
 }

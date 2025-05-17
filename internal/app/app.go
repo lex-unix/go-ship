@@ -126,11 +126,10 @@ func (app *App) Deploy(ctx context.Context) error {
 		return nil
 	})
 
-	if err != nil && cfg.Transaction.Bypass {
-		if cfg.Transaction.Bypass {
-			return err
-		}
-		if err := rollback(ctx); err != nil {
+	if err != nil {
+		rollbackCtx, rollbackCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer rollbackCancel()
+		if err := rollback(rollbackCtx); err != nil {
 			return err
 		}
 	}
@@ -177,11 +176,10 @@ func (app *App) Rollback(ctx context.Context, version string) error {
 		return nil
 	})
 
-	if err != nil && cfg.Transaction.Bypass {
-		if cfg.Transaction.Bypass {
-			return err
-		}
-		if err := rollback(ctx); err != nil {
+	if err != nil {
+		rollbackCtx, rollbackCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer rollbackCancel()
+		if err := rollback(rollbackCtx); err != nil {
 			return err
 		}
 	}

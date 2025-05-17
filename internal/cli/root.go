@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	appCmd "neite.dev/go-ship/internal/cli/app"
 	"neite.dev/go-ship/internal/cli/cliutil"
 	deployCmd "neite.dev/go-ship/internal/cli/deploy"
@@ -15,6 +14,7 @@ import (
 	proxyCmd "neite.dev/go-ship/internal/cli/proxy"
 	registryCmd "neite.dev/go-ship/internal/cli/registry"
 	rollbackCmd "neite.dev/go-ship/internal/cli/rollback"
+	"neite.dev/go-ship/internal/config"
 	"neite.dev/go-ship/internal/logging"
 )
 
@@ -23,13 +23,23 @@ func NewRootCmd(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 		Use:  "shipit",
 		Long: "shipit",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if viper.GetBool("debug") {
-				logging.SetDefault(logging.New(os.Stderr, logging.LevelDebug))
+			if cliutil.IsConfigLoadingEnabled(cmd) {
+				if cfg, err := config.Load(cmd.Flags()); err == nil {
+					if cfg.Debug {
+						logging.SetDefault(logging.New(os.Stderr, logging.LevelDebug))
+					}
+				} else {
+					return err
+				}
 			}
 
 			return nil
 		},
 	}
+
+	cmd.PersistentFlags().BoolP("debug", "d", false, "Display debugging output in the console")
+	cmd.PersistentFlags().String("host", "", "Host to run command on")
+	cmd.PersistentFlags().Bool("force", false, "Force non-transactional execution")
 
 	cmd.AddCommand(deployCmd.NewCmdDeploy(ctx, f))
 	cmd.AddCommand(rollbackCmd.NewCmdRollback(ctx, f))
@@ -39,13 +49,6 @@ func NewRootCmd(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 	cmd.AddCommand(registryCmd.NewCmdRegistry(ctx, f))
 	cmd.AddCommand(proxyCmd.NewCmdProxy(ctx, f))
 	cmd.AddCommand(initCmd.NewCmdInit(ctx, f))
-
-	cmd.PersistentFlags().BoolP("debug", "d", false, "Display debugging output in the console")
-	viper.BindPFlag("debug", cmd.PersistentFlags().Lookup("debug"))
-	cmd.PersistentFlags().String("host", "", "Host to run command on")
-	viper.BindPFlag("host", cmd.PersistentFlags().Lookup("host"))
-	cmd.PersistentFlags().Bool("force", false, "Force non-transactional execution")
-	viper.BindPFlag("transaction.bypass", cmd.PersistentFlags().Lookup("force"))
 
 	return cmd
 }

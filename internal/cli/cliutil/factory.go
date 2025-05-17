@@ -1,6 +1,7 @@
 package cliutil
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 
@@ -29,14 +30,13 @@ type Factory struct {
 }
 
 func configFunc() func() (*config.Config, error) {
-	var cachedConfig *config.Config
-	var configErr error
 	return func() (*config.Config, error) {
-		if cachedConfig != nil || configErr != nil {
-			return cachedConfig, configErr
+		// check if config was loaded
+		cfg := config.Get()
+		if cfg == nil {
+			return nil, errors.New("config not loaded")
 		}
-		cachedConfig, configErr = config.Load()
-		return cachedConfig, configErr
+		return cfg, nil
 	}
 }
 

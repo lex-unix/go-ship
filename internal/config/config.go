@@ -1,12 +1,18 @@
 package config
 
 import (
-	"embed"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
+	"strings"
 
-	"github.com/spf13/viper"
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/env"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/providers/posflag"
+	"github.com/knadh/koanf/v2"
+	"github.com/spf13/pflag"
 	"neite.dev/go-ship/internal/validator"
 )
 
@@ -24,109 +30,97 @@ const (
 	defaultRegistryServer = "docker.io"
 )
 
-var defaultProxyLabels = map[string]any{
-	"traefik.http.routers.catchall.entryPoints":                  "web",
-	"traefik.http.routers.catchall.rule":                         "'PathPrefix(`/`)'",
-	"traefik.http.routers.catchall.service":                      "unavailable",
-	"traefik.http.routers.catchall.priority":                     1,
-	"traefik.http.services.unavailable.loadbalancer.server.port": 0,
-}
-
 // Config errors
 var (
 	ErrNotExists = errors.New("config does not exist")
 )
 
-//go:embed templates/*
-var templateFS embed.FS
-
 type Proxy struct {
-	Name   string         `mapstructure:"name"`
-	Img    string         `mapstructure:"image"`
-	Args   map[string]any `mapstructure:"args"`
-	Labels map[string]any `mapstructure:"labels"`
+	Name   string         `koanf:"name"`
+	Img    string         `koanf:"image"`
+	Args   map[string]any `koanf:"args"`
+	Labels map[string]any `koanf:"labels"`
 }
 
 type SSH struct {
-	User string `mapstructure:"user"`
-	Port int64  `mapstructure:"port"`
+	User string `koanf:"user"`
+	Port int64  `koanf:"port"`
 }
 
 type Registry struct {
-	Server   string `mapstructure:"server"`
-	Username string `mapstructure:"username"`
-	Password string `mapstructure:"password"`
+	Server   string `koanf:"server"`
+	Username string `koanf:"username"`
+	Password string `koanf:"password"`
 }
 
 type Transaction struct {
-	Bypass bool `mapstructure:"bypass"`
+	Bypass bool `koanf:"bypass"`
 }
 
 type Config struct {
 	AppName     string
-	Service     string            `mapstructure:"service"`
-	Image       string            `mapstructure:"image"`
-	Dockerfile  string            `mapstructure:"dockerfile"`
-	Transaction Transaction       `mapstructure:"transaction"`
-	Servers     []string          `mapstructure:"servers"`
-	Host        string            `mapstructure:"host"`
-	SSH         SSH               `mapstructure:"ssh"`
-	Registry    Registry          `mapstructure:"registry"`
-	Proxy       Proxy             `mapstructure:"proxy"`
-	Debug       bool              `mapstructure:"debug"`
-	Secrets     map[string]string `mapstructure:"secrets"`
+	Service     string            `koanf:"service"`
+	Image       string            `koanf:"image"`
+	Dockerfile  string            `koanf:"dockerfile"`
+	Transaction Transaction       `koanf:"transaction"`
+	Servers     []string          `koanf:"servers"`
+	Host        string            `koanf:"host"`
+	SSH         SSH               `koanf:"ssh"`
+	Registry    Registry          `koanf:"registry"`
+	Proxy       Proxy             `koanf:"proxy"`
+	Debug       bool              `koanf:"debug"`
+	Secrets     map[string]string `koanf:"secrets"`
+	Env         map[string]string `koanf:"env"`
 }
 
-func Load() (*Config, error) {
-	viper.SetConfigName(appName)
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(".")
+var k = koanf.New(".")
 
-	viper.SetDefault("transaction.bypass", false)
-	viper.SetDefault("ssh.port", defaultSSHPort)
-	viper.SetDefault("ssh.user", defaultSSHUser)
-	viper.SetDefault("proxy.name", defaultProxyName)
-	viper.SetDefault("proxy.image", defaultProxyImage)
-	viper.SetDefault("proxy.labels", defaultProxyLabels)
-	viper.SetDefault("dockerfile", ".")
-	viper.SetDefault("registry.server", defaultRegistryServer)
-	viper.SetDefault("debug", false)
-	viper.AutomaticEnv()
+func Load(f *pflag.FlagSet) (*Config, error) {
+	k.Set("transaction.bypass", false)
+	k.Set("ssh.port", defaultSSHPort)
+	k.Set("ssh.user", defaultSSHUser)
+	k.Set("proxy.name", defaultProxyName)
+	k.Set("proxy.image", defaultProxyImage)
+	k.Set("dockerfile", ".")
+	k.Set("registry.server", defaultRegistryServer)
+	k.Set("debug", false)
 
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			return nil, ErrNotExists
-		} else {
-			return nil, fmt.Errorf("failed to read config file: %w", err)
-		}
+	if err := k.Load(file.Provider(fmt.Sprintf("%s.yaml", appName)), yaml.Parser()); err != nil {
+		return nil, err
+	}
+
+	envToKoanf := func(s string) string {
+		return strings.Replace(
+			strings.ToLower(strings.TrimPrefix(s, "SHIPIT_")), "_", ".", -1)
+	}
+
+	if err := k.Load(env.Provider("SHIPIT_", ".", envToKoanf), nil); err != nil {
+		return nil, err
+	}
+
+	if err := k.Load(posflag.Provider(f, ".", k), nil); err != nil {
+		return nil, err
 	}
 
 	cfg = &Config{
 		AppName: appName,
 	}
-	if err := viper.Unmarshal(cfg); err != nil {
-		return nil, fmt.Errorf("failed to parse config: %w", err)
-	}
 
-	for k, v := range cfg.Secrets {
-		if expanded := os.ExpandEnv(v); expanded != "" {
-			cfg.Secrets[k] = expanded
-		}
-	}
-
-	if err := Validate(); err != nil {
+	if err := k.Unmarshal("", &cfg); err != nil {
 		return nil, err
 	}
 
-	if traefikLabels := viper.GetStringMap("traefik.labels"); viper.IsSet("traefik.labels") {
-		mergeMaps(traefikLabels, defaultProxyLabels)
-		cfg.Proxy.Labels = traefikLabels
+	cfg.Secrets = expandEnv(cfg.Secrets)
+	cfg.Env = expandEnv(cfg.Env)
+
+	if err := validate(); err != nil {
+		return nil, err
 	}
 
 	return cfg, nil
 }
 
-func Validate() error {
+func validate() error {
 	if cfg == nil {
 		return errors.New("config not loaded")
 	}
@@ -150,11 +144,12 @@ func Get() *Config {
 	return cfg
 }
 
-// mergeMaps merges two maps together. If key from src is present in dst, it will preserve value.
-func mergeMaps(dst, src map[string]any) {
-	for k, v := range src {
-		if _, ok := dst[k]; !ok {
-			dst[k] = v
+func expandEnv(src map[string]string) map[string]string {
+	m := maps.Clone(src)
+	for k, v := range m {
+		if expanded := os.ExpandEnv(v); expanded != "" {
+			m[k] = expanded
 		}
 	}
+	return m
 }
