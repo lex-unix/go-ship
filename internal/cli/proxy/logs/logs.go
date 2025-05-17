@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"neite.dev/go-ship/internal/app"
 	"neite.dev/go-ship/internal/cli/cliutil"
 )
 
@@ -20,12 +19,11 @@ func NewCmdLogs(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 		Use:   "logs",
 		Short: "Fetch logs from proxy container on servers",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			txman, err := f.Txman()
+			app, err := f.App()
 			if err != nil {
 				return err
 			}
 
-			app := f.App(app.WithTxManager(txman))
 			if err := app.ProxyLogs(ctx, opts.Follow, opts.Lines, opts.Since); err != nil {
 				return err
 			}

@@ -64,6 +64,11 @@ func generateRandomString(length int) string {
 	return string(b)
 }
 
+type HostOutput struct {
+	Host   string
+	Output string
+}
+
 func (app *App) Deploy(ctx context.Context) error {
 	cfg := config.Get()
 	err := app.LoadHistory(ctx)
@@ -198,30 +203,14 @@ func (app *App) History(ctx context.Context, sortDir string) ([]History, error) 
 	return app.history, nil
 }
 
-func (app *App) ShowAppInfo(ctx context.Context) error {
+func (app *App) ShowServiceInfo(ctx context.Context) (map[string]string, error) {
 	cfg := config.Get()
-	if err := app.LoadHistory(ctx); err != nil {
-		return err
-	}
+	return app.showInfo(ctx, cfg.Service)
+}
 
-	var output bytes.Buffer
-	err := app.txmanager.Execute(ctx, func(ctx context.Context, client sshexec.Service) error {
-		var stdout bytes.Buffer
-		err := client.Run(ctx, "docker ps --filter name="+cfg.Service, sshexec.WithStdout(&stdout))
-		if err != nil {
-			return err
-		}
-		_, _ = output.Write(stdout.Bytes())
-		return nil
-	})
-
-	if err != nil {
-		return err
-	}
-
-	fmt.Print(output.String())
-
-	return nil
+func (app *App) ShowProxyInfo(ctx context.Context) (map[string]string, error) {
+	container := config.Get().Proxy.Name
+	return app.showInfo(ctx, container)
 }
 
 func (app *App) ServiceLogs(ctx context.Context, follow bool, lines int, since string) error {
@@ -265,6 +254,13 @@ func (app *App) StartService(ctx context.Context) error {
 func (app *App) StartProxy(ctx context.Context) error {
 	container := config.Get().Proxy.Name
 	return app.startContainer(ctx, container)
+}
+
+func (app *App) RestartService(ctx context.Context) error {
+	if err := app.StopService(ctx); err != nil {
+		return err
+	}
+	return app.StartService(ctx)
 }
 
 func (app *App) RegistryLogin(ctx context.Context) error {
@@ -361,4 +357,23 @@ func (app *App) stopContainer(ctx context.Context, container string) error {
 		}
 		return nil
 	})
+}
+
+func (app *App) showInfo(ctx context.Context, container string) (map[string]string, error) {
+	output := make(map[string]string)
+	err := app.txmanager.Execute(ctx, func(ctx context.Context, client sshexec.Service) error {
+		var stdout bytes.Buffer
+		err := client.Run(ctx, "docker ps --filter name="+container, sshexec.WithStdout(&stdout))
+		if err != nil {
+			return err
+		}
+		output[client.Host()] = stdout.String()
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return output, nil
 }

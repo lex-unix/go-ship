@@ -1,4 +1,4 @@
-package start
+package restart
 
 import (
 	"context"
@@ -8,20 +8,20 @@ import (
 	"neite.dev/go-ship/internal/logging"
 )
 
-func NewCmdStart(ctx context.Context, f *cliutil.Factory) *cobra.Command {
+func NewCmdRestart(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "start",
-		Short: "Start app container on servers",
+		Use:   "restart",
+		Short: "Restart app container on servers",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app, err := f.App()
 			if err != nil {
 				return err
 			}
 
-			if err := app.StartService(ctx); err != nil {
+			if err := app.RestartService(ctx); err != nil {
 				return err
 			}
-			logging.Info("app container started on servers")
+			logging.Info("app container restarted on servers")
 			return nil
 		},
 	}

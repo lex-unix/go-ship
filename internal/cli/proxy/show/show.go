@@ -11,14 +11,14 @@ import (
 func NewCmdShow(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "show",
-		Short: "Show app container on servers",
+		Short: "Show proxy container on servers",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app, err := f.App()
 			if err != nil {
 				return err
 			}
 
-			info, err := app.ShowServiceInfo(ctx)
+			info, err := app.ShowProxyInfo(ctx)
 			if err != nil {
 				return err
 			}

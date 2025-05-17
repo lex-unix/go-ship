@@ -54,6 +54,7 @@ func New(conns ...sshexec.Service) *txman {
 
 	return m
 }
+
 func (m *txman) BeginTransaction(ctx context.Context, callback TxCallback) (RollbackFunc, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -116,15 +117,14 @@ func (m *txman) BeginTransaction(ctx context.Context, callback TxCallback) (Roll
 			close(rollbackErrCh)
 		}()
 
-		errs := make([]error, 0)
-		for err := range rollbackErrCh {
-			errs = append(errs, err)
+		var err error
+		for rollbackErr := range rollbackErrCh {
+			err = errors.Join(err, rollbackErr)
 		}
-		if len(errs) != 0 {
-			return errors.Join(errs...)
+		if err != nil {
+			return err
 		}
 		return nil
-
 	}
 
 	if txErr != nil {

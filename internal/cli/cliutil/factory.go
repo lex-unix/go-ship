@@ -11,12 +11,6 @@ import (
 	"neite.dev/go-ship/internal/txman"
 )
 
-type FactoryFFF struct {
-	App       *app.App
-	Txman     txman.Service
-	Localexec localexec.Service
-}
-
 func New() *Factory {
 	f := &Factory{
 		Config: configFunc(),
@@ -31,7 +25,7 @@ func New() *Factory {
 type Factory struct {
 	Config func() (*config.Config, error)
 	Txman  func() (txman.Service, error)
-	App    func(options ...app.Option) *app.App
+	App    func() (*app.App, error)
 }
 
 func configFunc() func() (*config.Config, error) {
@@ -76,9 +70,13 @@ func txManFunc(f *Factory) func() (txman.Service, error) {
 	}
 }
 
-func appFunc(f *Factory) func(options ...app.Option) *app.App {
-	return func(options ...app.Option) *app.App {
+func appFunc(f *Factory) func() (*app.App, error) {
+	return func() (*app.App, error) {
+		txman, err := f.Txman()
+		if err != nil {
+			return nil, err
+		}
 		le := localexec.New()
-		return app.New(le, options...)
+		return app.New(le, app.WithTxManager(txman)), nil
 	}
 }

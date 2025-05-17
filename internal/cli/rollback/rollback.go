@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"neite.dev/go-ship/internal/app"
 	"neite.dev/go-ship/internal/cli/cliutil"
 	"neite.dev/go-ship/internal/logging"
 )
@@ -20,12 +19,11 @@ func NewCmdRollback(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 			}
 			version := args[0]
 
-			txman, err := f.Txman()
+			app, err := f.App()
 			if err != nil {
 				return err
 			}
 
-			app := f.App(app.WithTxManager(txman))
 			if err := app.Rollback(ctx, version); err != nil {
 				return err
 			}
