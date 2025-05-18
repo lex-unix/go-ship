@@ -61,7 +61,7 @@ func (l Level) ColorString() string {
 var defaultLogger atomic.Pointer[Logger]
 
 func init() {
-	defaultLogger.Store(New(os.Stderr, LevelInfo))
+	defaultLogger.Store(New(os.Stdout, LevelInfo))
 }
 
 type Logger struct {
@@ -144,6 +144,12 @@ func WarnHostf(host, format string, args ...any) {
 
 func ErrorHostf(host, format string, args ...any) {
 	Default().logWithHost(LevelError, host, format, args...)
+}
+
+func Flush() {
+	l := Default()
+	l.mu.Lock()
+	defer l.mu.Unlock()
 }
 
 func (l *Logger) log(level Level, format string, args ...any) {

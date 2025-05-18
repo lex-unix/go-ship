@@ -34,9 +34,9 @@ func StartContainer(img string) string {
 	return fmt.Sprintf("docker start %s", img)
 }
 
-func RunContainer(img, container string) string {
+func RunContainer(img, container string, env []string) string {
 	labels := []string{"--label traefik.enable=true", "--label traefik.http.routers.myapp.entrypoints=web", "--label traefik.http.routers.myapp.rule='PathPrefix(`/`)'"}
-	return fmt.Sprintf("docker run -d %s --name %s %s", strings.Join(labels, " "), container, img)
+	return fmt.Sprintf("docker run -d %s %s --name %s %s", strings.Join(env, " "), strings.Join(labels, " "), container, img)
 }
 
 func StopContainer(container string) string {
@@ -91,4 +91,17 @@ func RegistryLogin(registry, user, password string) string {
 
 func RegistryLogout() string {
 	return fmt.Sprintf("docker logout")
+}
+
+func Exec(container string, execCmd string, interactive bool) string {
+	var sb strings.Builder
+	sb.WriteString("docker exec")
+	if interactive {
+		sb.WriteString(" -it")
+	}
+	sb.WriteString(" ")
+	sb.WriteString(container)
+	sb.WriteString(" ")
+	sb.WriteString(execCmd)
+	return sb.String()
 }

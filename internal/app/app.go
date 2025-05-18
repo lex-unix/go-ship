@@ -104,6 +104,11 @@ func (app *App) Deploy(ctx context.Context) error {
 		return fmt.Errorf("failed to push %s to %s: %w", imgWithTag, cfg.Registry.Server, err)
 	}
 
+	var envs []string
+	for k, v := range cfg.Env {
+		envs = append(envs, fmt.Sprintf("--env %s=%q", k, v))
+	}
+
 	rollback, err := app.txmanager.BeginTransaction(ctx, func(ctx context.Context, tx txman.Transaction) error {
 		err := tx.Do(ctx, PullImage(registryImg), nil)
 		if err != nil {
@@ -113,7 +118,7 @@ func (app *App) Deploy(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		err = tx.Do(ctx, RunContainer(registryImg, newContainer), StopContainer(newContainer))
+		err = tx.Do(ctx, RunContainer(registryImg, newContainer, envs), StopContainer(newContainer))
 		if err != nil {
 			return err
 		}
@@ -303,6 +308,21 @@ func (app *App) CreateConfig() error {
 		return err
 	}
 	return nil
+}
+
+func (app *App) ExecService(ctx context.Context, execCmd string, interactive bool) error {
+	if err := app.LoadHistory(ctx); err != nil {
+		return err
+	}
+	cfg := config.Get()
+	container := fmt.Sprintf("%s-%s", cfg.Service, app.LatestVersion())
+	return app.txmanager.Execute(ctx, func(ctx context.Context, client sshexec.Service) error {
+		err := client.Run(ctx, command.Exec(container, execCmd, interactive), sshexec.WithPty())
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (app *App) logs(
