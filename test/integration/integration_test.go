@@ -64,7 +64,7 @@ func deployerExec(t *testing.T, cmd string, workdir string) string {
 }
 
 func faino(t *testing.T, cmd string) string {
-	return deployerExec(t, fmt.Sprintf("/usr/local/bin/faino %s", cmd), "/app")
+	return deployerExec(t, fmt.Sprintf("/usr/local/bin/faino --debug %s", cmd), "/app")
 }
 
 func setup(t *testing.T) {

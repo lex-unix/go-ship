@@ -11,10 +11,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/lex-unix/faino/internal/logging"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"
-	"github.com/lex-unix/faino/internal/logging"
 )
 
 type fd uint8
@@ -73,7 +73,7 @@ func New(host, user string, port int64) (*SSH, error) {
 	}
 
 	// if there is an error with ssh agent, will try to use private keys
-	if socketErr != nil {
+	if socketPath == "" || socketErr != nil {
 		var signers []ssh.Signer
 		for _, pkeyFile := range privateKeys {
 			if signer, err := parsePrivateKey(filepath.Join(sshDir, pkeyFile)); err == nil {

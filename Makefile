@@ -1,5 +1,3 @@
-include .env
-
 MAIN_PACKAGE_PATH := ./cmd/faino
 BINARY_NAME := faino
 
