@@ -1,14 +1,14 @@
 package integration
 
 import (
+	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -23,25 +23,40 @@ const (
 func dockerCompose(t *testing.T, composeCmd string) string {
 	t.Helper()
 
-	var buff bytes.Buffer
-
 	cmd := exec.Command("sh", "-c", fmt.Sprintf("docker compose %s", composeCmd))
-	cmd.Stdout = &buff
+	var wg sync.WaitGroup
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	stdoutPipe, _ := cmd.StdoutPipe()
+	stderrPipe, _ := cmd.StderrPipe()
 
-	err := cmd.Run()
-
-	os.Stdout.Write(buff.Bytes())
-
-	if err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			t.Fatalf("command `docker compose %s` failed: %s\n%s", composeCmd, err, buff.String())
-		} else {
-			t.Fatalf("command `docker compose %s` failed: %s\n%s", composeCmd, err, buff.String())
+	read := func(r io.Reader, w io.Writer) {
+		defer wg.Done()
+		scanner := bufio.NewScanner(r)
+		for scanner.Scan() {
+			line := scanner.Text()
+			t.Log(line)
+			fmt.Fprintln(w, line)
+		}
+		if err := scanner.Err(); err != nil {
+			t.Log(err)
 		}
 	}
 
-	return buff.String()
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	wg.Add(2)
+	go read(stdoutPipe, &stdout)
+	go read(stderrPipe, &stderr)
+
+	wg.Wait()
+	if err := cmd.Wait(); err != nil {
+		t.Fatalf("command `docker compose %s` failed: %s", composeCmd, err)
+	}
+
+	return stdout.String()
 }
 
 func deployerExec(t *testing.T, cmd string, workdir string) string {
@@ -79,7 +94,7 @@ func waitForHealthy(t *testing.T, maxRetry int, waitTime time.Duration) {
 		}
 		time.Sleep(waitTime)
 	}
-	t.FailNow()
+	t.Fatal("container not healthy")
 }
 
 func appResponse() *http.Response {
