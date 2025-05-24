@@ -1,4 +1,4 @@
-name: "shipit-test"
+name: "faino-test"
 services:
     shared:
         build:
@@ -39,7 +39,7 @@ services:
             context: docker/deployer
             dockerfile: Dockerfile
         volumes:
-            - ../..:/go-ship
+            - ../..:/faino
             - shared:/shared
             - registry:/registry
         networks:

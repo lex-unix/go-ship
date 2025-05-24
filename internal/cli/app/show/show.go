@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"neite.dev/go-ship/internal/cli/cliutil"
+	"github.com/lex-unix/faino/internal/cli/cliutil"
 )
 
 func NewCmdShow(ctx context.Context, f *cliutil.Factory) *cobra.Command {

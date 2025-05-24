@@ -14,7 +14,7 @@ import (
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/crypto/ssh/knownhosts"
-	"neite.dev/go-ship/internal/logging"
+	"github.com/lex-unix/faino/internal/logging"
 )
 
 type fd uint8

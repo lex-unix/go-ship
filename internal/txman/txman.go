@@ -5,8 +5,8 @@ import (
 	"errors"
 	"sync"
 
-	"neite.dev/go-ship/internal/exec/sshexec"
-	"neite.dev/go-ship/internal/logging"
+	"github.com/lex-unix/faino/internal/exec/sshexec"
+	"github.com/lex-unix/faino/internal/logging"
 )
 
 // Callback defines a function signature for operations executed on a remote host

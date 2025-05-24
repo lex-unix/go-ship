@@ -4,24 +4,24 @@ import (
 	"context"
 	"os"
 
+	appCmd "github.com/lex-unix/faino/internal/cli/app"
+	"github.com/lex-unix/faino/internal/cli/cliutil"
+	deployCmd "github.com/lex-unix/faino/internal/cli/deploy"
+	historyCmd "github.com/lex-unix/faino/internal/cli/history"
+	initCmd "github.com/lex-unix/faino/internal/cli/init"
+	logsCmd "github.com/lex-unix/faino/internal/cli/logs"
+	proxyCmd "github.com/lex-unix/faino/internal/cli/proxy"
+	registryCmd "github.com/lex-unix/faino/internal/cli/registry"
+	rollbackCmd "github.com/lex-unix/faino/internal/cli/rollback"
+	"github.com/lex-unix/faino/internal/config"
+	"github.com/lex-unix/faino/internal/logging"
 	"github.com/spf13/cobra"
-	appCmd "neite.dev/go-ship/internal/cli/app"
-	"neite.dev/go-ship/internal/cli/cliutil"
-	deployCmd "neite.dev/go-ship/internal/cli/deploy"
-	historyCmd "neite.dev/go-ship/internal/cli/history"
-	initCmd "neite.dev/go-ship/internal/cli/init"
-	logsCmd "neite.dev/go-ship/internal/cli/logs"
-	proxyCmd "neite.dev/go-ship/internal/cli/proxy"
-	registryCmd "neite.dev/go-ship/internal/cli/registry"
-	rollbackCmd "neite.dev/go-ship/internal/cli/rollback"
-	"neite.dev/go-ship/internal/config"
-	"neite.dev/go-ship/internal/logging"
 )
 
 func NewRootCmd(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:           "shipit",
-		Long:          "shipit",
+		Use:           "faino",
+		Long:          "faino",
 		SilenceUsage:  false,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {

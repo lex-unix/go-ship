@@ -1,7 +1,7 @@
 include .env
 
-MAIN_PACKAGE_PATH := ./cmd/shipit
-BINARY_NAME := shipit
+MAIN_PACKAGE_PATH := ./cmd/faino
+BINARY_NAME := faino
 
 # ==================================================================================== #
 # HELPERS

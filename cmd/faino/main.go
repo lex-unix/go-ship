@@ -6,9 +6,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"neite.dev/go-ship/internal/cli"
-	"neite.dev/go-ship/internal/cli/cliutil"
-	"neite.dev/go-ship/internal/logging"
+	"github.com/lex-unix/faino/internal/cli"
+	"github.com/lex-unix/faino/internal/cli/cliutil"
+	"github.com/lex-unix/faino/internal/logging"
 )
 
 func main() {

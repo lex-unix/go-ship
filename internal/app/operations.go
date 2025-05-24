@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"neite.dev/go-ship/internal/command"
-	"neite.dev/go-ship/internal/exec/sshexec"
-	"neite.dev/go-ship/internal/txman"
+	"github.com/lex-unix/faino/internal/command"
+	"github.com/lex-unix/faino/internal/exec/sshexec"
+	"github.com/lex-unix/faino/internal/txman"
 )
 
 func PullImage(img string) txman.Callback {

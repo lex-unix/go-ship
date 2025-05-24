@@ -63,8 +63,8 @@ func deployerExec(t *testing.T, cmd string, workdir string) string {
 	return dockerCompose(t, fmt.Sprintf("exec --workdir %s deployer %s", workdir, cmd))
 }
 
-func shipit(t *testing.T, cmd string) string {
-	return deployerExec(t, fmt.Sprintf("/usr/local/bin/shipit %s", cmd), "/app")
+func faino(t *testing.T, cmd string) string {
+	return deployerExec(t, fmt.Sprintf("/usr/local/bin/faino %s", cmd), "/app")
 }
 
 func setup(t *testing.T) {

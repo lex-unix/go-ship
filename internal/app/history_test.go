@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"neite.dev/go-ship/internal/exec/sshexec"
-	"neite.dev/go-ship/internal/txman"
+	"github.com/lex-unix/faino/internal/exec/sshexec"
+	"github.com/lex-unix/faino/internal/txman"
 )
 
 var testHistoryData = []byte(`[

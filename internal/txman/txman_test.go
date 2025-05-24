@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"neite.dev/go-ship/internal/exec/sshexec"
+	"github.com/lex-unix/faino/internal/exec/sshexec"
 )
 
 func TestBeginTransactin(t *testing.T) {

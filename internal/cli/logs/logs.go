@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"neite.dev/go-ship/internal/cli/cliutil"
+	"github.com/lex-unix/faino/internal/cli/cliutil"
 )
 
 type LogsOptions struct {

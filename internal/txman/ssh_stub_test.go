@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"neite.dev/go-ship/internal/exec/sshexec"
+	"github.com/lex-unix/faino/internal/exec/sshexec"
 )
 
 // SSHServiceStub is a stub implementation of the Service interface.

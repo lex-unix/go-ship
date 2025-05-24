@@ -12,8 +12,8 @@ import (
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/providers/posflag"
 	"github.com/knadh/koanf/v2"
+	"github.com/lex-unix/faino/internal/validator"
 	"github.com/spf13/pflag"
-	"neite.dev/go-ship/internal/validator"
 )
 
 // Global config instance
@@ -21,7 +21,7 @@ var cfg *Config
 
 // default values
 const (
-	appName  = "shipit"
+	appName  = "faino"
 	builder  = "faino-hybrid"
 	platform = "linux/amd64,linux/arm64"
 	driver   = "docker-container"
@@ -104,10 +104,10 @@ func Load(f *pflag.FlagSet) (*Config, error) {
 
 	envToKoanf := func(s string) string {
 		return strings.Replace(
-			strings.ToLower(strings.TrimPrefix(s, "SHIPIT_")), "_", ".", -1)
+			strings.ToLower(strings.TrimPrefix(s, "FAINO")), "_", ".", -1)
 	}
 
-	if err := k.Load(env.Provider("SHIPIT_", ".", envToKoanf), nil); err != nil {
+	if err := k.Load(env.Provider("FAINO", ".", envToKoanf), nil); err != nil {
 		return nil, err
 	}
 

@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"neite.dev/go-ship/internal/cli/cliutil"
-	execCmd "neite.dev/go-ship/internal/cli/proxy/exec"
-	logsCmd "neite.dev/go-ship/internal/cli/proxy/logs"
-	restartCmd "neite.dev/go-ship/internal/cli/proxy/restart"
-	showCmd "neite.dev/go-ship/internal/cli/proxy/show"
-	startCmd "neite.dev/go-ship/internal/cli/proxy/start"
-	stopCmd "neite.dev/go-ship/internal/cli/proxy/stop"
+	"github.com/lex-unix/faino/internal/cli/cliutil"
+	execCmd "github.com/lex-unix/faino/internal/cli/proxy/exec"
+	logsCmd "github.com/lex-unix/faino/internal/cli/proxy/logs"
+	restartCmd "github.com/lex-unix/faino/internal/cli/proxy/restart"
+	showCmd "github.com/lex-unix/faino/internal/cli/proxy/show"
+	startCmd "github.com/lex-unix/faino/internal/cli/proxy/start"
+	stopCmd "github.com/lex-unix/faino/internal/cli/proxy/stop"
 )
 
 func NewCmdProxy(ctx context.Context, f *cliutil.Factory) *cobra.Command {

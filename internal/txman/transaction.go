@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"neite.dev/go-ship/internal/exec/sshexec"
+	"github.com/lex-unix/faino/internal/exec/sshexec"
 )
 
 type Transaction interface {

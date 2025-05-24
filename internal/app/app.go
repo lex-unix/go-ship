@@ -12,14 +12,14 @@ import (
 	"strings"
 	"time"
 
-	"neite.dev/go-ship/internal/command"
-	"neite.dev/go-ship/internal/config"
-	"neite.dev/go-ship/internal/exec/localexec"
-	"neite.dev/go-ship/internal/exec/sshexec"
-	"neite.dev/go-ship/internal/logging"
-	"neite.dev/go-ship/internal/stream"
-	"neite.dev/go-ship/internal/template"
-	"neite.dev/go-ship/internal/txman"
+	"github.com/lex-unix/faino/internal/command"
+	"github.com/lex-unix/faino/internal/config"
+	"github.com/lex-unix/faino/internal/exec/localexec"
+	"github.com/lex-unix/faino/internal/exec/sshexec"
+	"github.com/lex-unix/faino/internal/logging"
+	"github.com/lex-unix/faino/internal/stream"
+	"github.com/lex-unix/faino/internal/template"
+	"github.com/lex-unix/faino/internal/txman"
 )
 
 type App struct {
@@ -346,11 +346,11 @@ func (app *App) RegistryLogout(ctx context.Context) error {
 }
 
 func (app *App) CreateConfig() error {
-	data, err := template.TemplateFS.ReadFile("templates/shipit.yaml")
+	data, err := template.TemplateFS.ReadFile("templates/faino.yaml")
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile("shipit.yaml", data, 0644)
+	err = os.WriteFile("faino.yaml", data, 0644)
 	if err != nil {
 		return err
 	}

@@ -4,12 +4,12 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	execCmd "neite.dev/go-ship/internal/cli/app/exec"
-	restartCmd "neite.dev/go-ship/internal/cli/app/restart"
-	showCmd "neite.dev/go-ship/internal/cli/app/show"
-	startCmd "neite.dev/go-ship/internal/cli/app/start"
-	stopCmd "neite.dev/go-ship/internal/cli/app/stop"
-	"neite.dev/go-ship/internal/cli/cliutil"
+	execCmd "github.com/lex-unix/faino/internal/cli/app/exec"
+	restartCmd "github.com/lex-unix/faino/internal/cli/app/restart"
+	showCmd "github.com/lex-unix/faino/internal/cli/app/show"
+	startCmd "github.com/lex-unix/faino/internal/cli/app/start"
+	stopCmd "github.com/lex-unix/faino/internal/cli/app/stop"
+	"github.com/lex-unix/faino/internal/cli/cliutil"
 )
 
 func NewCmdApp(ctx context.Context, f *cliutil.Factory) *cobra.Command {

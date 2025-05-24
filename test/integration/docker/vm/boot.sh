@@ -1,8 +1,8 @@
 #!/bin/bash
 
-mkdir ~/.shipit
+mkdir ~/.faino
 
-echo '[]' > ~/.shipit/history.json
+echo '[]' > ~/.faino/history.json
 
 while [ ! -f /root/.ssh/authorized_keys ]; do echo "Waiting for ssh keys"; sleep 1; done
 

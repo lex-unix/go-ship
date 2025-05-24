@@ -7,14 +7,14 @@ import (
 	"sort"
 	"time"
 
-	"neite.dev/go-ship/internal/config"
-	"neite.dev/go-ship/internal/exec/sshexec"
-	"neite.dev/go-ship/internal/logging"
-	"neite.dev/go-ship/internal/txman"
+	"github.com/lex-unix/faino/internal/config"
+	"github.com/lex-unix/faino/internal/exec/sshexec"
+	"github.com/lex-unix/faino/internal/logging"
+	"github.com/lex-unix/faino/internal/txman"
 )
 
 const (
-	defautlHistoryFilePath = "~/.shipit/history.json"
+	defautlHistoryFilePath = "~/.faino/history.json"
 )
 
 type History struct {

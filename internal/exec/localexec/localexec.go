@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"sync"
 
-	"neite.dev/go-ship/internal/logging"
+	"github.com/lex-unix/faino/internal/logging"
 )
 
 type Service interface {

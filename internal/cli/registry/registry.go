@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"neite.dev/go-ship/internal/cli/cliutil"
-	loginCmd "neite.dev/go-ship/internal/cli/registry/login"
-	logoutCmd "neite.dev/go-ship/internal/cli/registry/logout"
+	"github.com/lex-unix/faino/internal/cli/cliutil"
+	loginCmd "github.com/lex-unix/faino/internal/cli/registry/login"
+	logoutCmd "github.com/lex-unix/faino/internal/cli/registry/logout"
 )
 
 func NewCmdRegistry(ctx context.Context, f *cliutil.Factory) *cobra.Command {

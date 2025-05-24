@@ -1,4 +1,4 @@
-module neite.dev/go-ship
+module github.com/lex-unix/faino
 
 go 1.24.0
 

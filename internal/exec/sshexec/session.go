@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
-	"neite.dev/go-ship/internal/logging"
+	"github.com/lex-unix/faino/internal/logging"
 )
 
 func (s *SSH) run(session *ssh.Session, cmd string, opts sessionOptions) error {

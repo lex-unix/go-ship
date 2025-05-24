@@ -1,8 +1,8 @@
 #!/bin/bash
 
 mkdir -p /usr/local/bin/
-cd /go-ship && go build -buildvcs=false -o /usr/local/bin/shipit ./cmd/shipit/
-chmod +x /usr/local/bin/shipit
+cd /faino && go build -buildvcs=false -o /usr/local/bin/faino ./cmd/faino/
+chmod +x /usr/local/bin/faino
 
 push_to_registry() {
     if ! stat /registry/docker/registry/v2/repositories/$1/_manifests/tags/$2/current/link > /dev/null; then

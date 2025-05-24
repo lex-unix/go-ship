@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"slices"
 
-	"neite.dev/go-ship/internal/app"
-	"neite.dev/go-ship/internal/config"
-	"neite.dev/go-ship/internal/exec/localexec"
-	"neite.dev/go-ship/internal/exec/sshexec"
-	"neite.dev/go-ship/internal/txman"
+	"github.com/lex-unix/faino/internal/app"
+	"github.com/lex-unix/faino/internal/config"
+	"github.com/lex-unix/faino/internal/exec/localexec"
+	"github.com/lex-unix/faino/internal/exec/sshexec"
+	"github.com/lex-unix/faino/internal/txman"
 )
 
 func New() *Factory {

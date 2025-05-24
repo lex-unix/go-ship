@@ -3,7 +3,7 @@ package localexec
 import (
 	"bytes"
 
-	"neite.dev/go-ship/internal/logging"
+	"github.com/lex-unix/faino/internal/logging"
 )
 
 var newline = []byte("\n")
