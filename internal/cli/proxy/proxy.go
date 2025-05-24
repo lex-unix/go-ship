@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"neite.dev/go-ship/internal/cli/cliutil"
+	execCmd "neite.dev/go-ship/internal/cli/proxy/exec"
 	logsCmd "neite.dev/go-ship/internal/cli/proxy/logs"
 	restartCmd "neite.dev/go-ship/internal/cli/proxy/restart"
 	showCmd "neite.dev/go-ship/internal/cli/proxy/show"
@@ -23,6 +24,7 @@ func NewCmdProxy(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 	cmd.AddCommand(stopCmd.NewCmdStop(ctx, f))
 	cmd.AddCommand(restartCmd.NewCmdRestart(ctx, f))
 	cmd.AddCommand(showCmd.NewCmdShow(ctx, f))
+	cmd.AddCommand(execCmd.NewCmdExec(ctx, f))
 
 	return cmd
 }

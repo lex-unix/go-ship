@@ -5,17 +5,12 @@ import (
 	"strings"
 )
 
-func BuildImage(img, dockerfile string, secrets map[string]string) string {
-	var sb strings.Builder
-	sb.WriteString("docker buildx build -t ")
-	sb.WriteString(img)
-	for k := range secrets {
-		sb.WriteString(fmt.Sprintf(" --secret id=%s", k))
-	}
-	sb.WriteString(" ")
-	sb.WriteString(dockerfile)
+func IsDockerInstalled() string {
+	return "docker -v"
+}
 
-	return sb.String()
+func IsDockerRunning() string {
+	return "docker version"
 }
 
 func TagImage(img, registryImg string) string {
@@ -47,7 +42,7 @@ func LoginToRegistry(user, password, registry string) string {
 	return fmt.Sprintf("docker login -u %s -p %s %s", user, password, registry)
 }
 
-func StartProxy(img, labels, args string) string {
+func RunProxy(img, labels, args string) string {
 	return fmt.Sprintf(
 		"docker run -d -p 80:80 --name traefik --volume /var/run/docker.sock:/var/run/docker.sock:ro %s %s --providers.docker --entryPoints.web.address=:80 --accesslog=true %s",
 		labels,

@@ -17,5 +17,19 @@ func (e pipeError) Error() string {
 	case fdStderr:
 		d = "stderr"
 	}
-	return fmt.Sprintf("%s pipe: %w", d, e.err)
+	return fmt.Sprintf("%s pipe: %s", d, e.err)
+}
+
+type CmdNotFoundErr struct {
+	err     error
+	command string
+	args    string
+}
+
+func (e CmdNotFoundErr) Error() string {
+	return fmt.Sprintf("command %q not found", e.command)
+}
+
+func (e CmdNotFoundErr) Unwrap() error {
+	return e.err
 }

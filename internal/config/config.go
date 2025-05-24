@@ -21,11 +21,16 @@ var cfg *Config
 
 // default values
 const (
-	appName               = "shipit"
+	appName  = "shipit"
+	builder  = "faino-hybrid"
+	platform = "linux/amd64,linux/arm64"
+	driver   = "docker-container"
+
+	// config defaults
 	defaultDockerfilePath = "."
 	defaultSSHPort        = 22
 	defaultSSHUser        = "root"
-	defaultProxyName      = "traefik"
+	defaultProxyContainer = "traefik"
 	defaultProxyImage     = "traefik:v3.1"
 	defaultRegistryServer = "docker.io"
 )
@@ -36,10 +41,10 @@ var (
 )
 
 type Proxy struct {
-	Name   string         `koanf:"name"`
-	Img    string         `koanf:"image"`
-	Args   map[string]any `koanf:"args"`
-	Labels map[string]any `koanf:"labels"`
+	Container string         `koanf:"container"`
+	Img       string         `koanf:"image"`
+	Args      map[string]any `koanf:"args"`
+	Labels    map[string]any `koanf:"labels"`
 }
 
 type SSH struct {
@@ -57,17 +62,25 @@ type Transaction struct {
 	Bypass bool `koanf:"bypass"`
 }
 
+type Build struct {
+	Dockerfile string            `koanf:"dockerfile"`
+	Args       map[string]string `koanf:"args"`
+	Builder    string
+	Platform   string
+	Driver     string
+}
+
 type Config struct {
 	AppName     string
 	Service     string            `koanf:"service"`
 	Image       string            `koanf:"image"`
-	Dockerfile  string            `koanf:"dockerfile"`
 	Transaction Transaction       `koanf:"transaction"`
 	Servers     []string          `koanf:"servers"`
 	Host        string            `koanf:"host"`
 	SSH         SSH               `koanf:"ssh"`
 	Registry    Registry          `koanf:"registry"`
 	Proxy       Proxy             `koanf:"proxy"`
+	Build       Build             `koanf:"build"`
 	Debug       bool              `koanf:"debug"`
 	Secrets     map[string]string `koanf:"secrets"`
 	Env         map[string]string `koanf:"env"`
@@ -79,9 +92,9 @@ func Load(f *pflag.FlagSet) (*Config, error) {
 	k.Set("transaction.bypass", false)
 	k.Set("ssh.port", defaultSSHPort)
 	k.Set("ssh.user", defaultSSHUser)
-	k.Set("proxy.name", defaultProxyName)
+	k.Set("proxy.container", defaultProxyContainer)
 	k.Set("proxy.image", defaultProxyImage)
-	k.Set("dockerfile", ".")
+	k.Set("build.dockerfile", ".")
 	k.Set("registry.server", defaultRegistryServer)
 	k.Set("debug", false)
 
@@ -104,6 +117,11 @@ func Load(f *pflag.FlagSet) (*Config, error) {
 
 	cfg = &Config{
 		AppName: appName,
+		Build: Build{
+			Builder:  builder,
+			Platform: platform,
+			Driver:   driver,
+		},
 	}
 
 	if err := k.Unmarshal("", &cfg); err != nil {
@@ -112,6 +130,7 @@ func Load(f *pflag.FlagSet) (*Config, error) {
 
 	cfg.Secrets = expandEnv(cfg.Secrets)
 	cfg.Env = expandEnv(cfg.Env)
+	cfg.Build.Args = expandEnv(cfg.Build.Args)
 
 	if err := validate(); err != nil {
 		return nil, err

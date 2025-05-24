@@ -20,8 +20,10 @@ import (
 
 func NewRootCmd(ctx context.Context, f *cliutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:  "shipit",
-		Long: "shipit",
+		Use:           "shipit",
+		Long:          "shipit",
+		SilenceUsage:  false,
+		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if cliutil.IsConfigLoadingEnabled(cmd) {
 				if cfg, err := config.Load(cmd.Flags()); err == nil {

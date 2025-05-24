@@ -22,7 +22,7 @@ type StubSSH struct {
 	out bytes.Buffer
 }
 
-func (stub *StubSSH) Run(ctx context.Context, cmd string, options ...sshexec.RunOption) error {
+func (stub *StubSSH) Run(ctx context.Context, cmd string, options ...sshexec.SessionOption) error {
 	return nil
 }
 

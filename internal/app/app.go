@@ -9,6 +9,7 @@ import (
 	"os"
 	"slices"
 	"sort"
+	"strings"
 	"time"
 
 	"neite.dev/go-ship/internal/command"
@@ -71,37 +72,80 @@ type HostOutput struct {
 
 func (app *App) Deploy(ctx context.Context) error {
 	cfg := config.Get()
-	err := app.LoadHistory(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to read history at %s: %w", app.historyFilePath, err)
-	}
 
 	// FIXME: should use commit hash for this
 	currentVersion := app.LatestVersion()
 	newVersion := generateRandomString(10)
-	imgWithTag := fmt.Sprintf("%s:%s", cfg.Image, newVersion)
-	registryImg := fmt.Sprintf("%s/%s", cfg.Registry.Server, imgWithTag)
+	image := fmt.Sprintf("%s/%s:%s", cfg.Registry.Server, cfg.Image, newVersion)
 	currentContainer := fmt.Sprintf("%s-%s", cfg.Service, currentVersion)
 	newContainer := fmt.Sprintf("%s-%s", cfg.Service, newVersion)
+
+	var cmdout bytes.Buffer
+	// check if builder exists
+	err := app.lexec.Run(ctx, command.ListBuilders(cfg.Build.Builder), localexec.WithStdout(&cmdout))
+	if err != nil {
+		return err
+	}
+
+	// if there is no builder, create it
+	if !strings.Contains(cmdout.String(), cfg.Build.Builder) {
+		logging.Infof("creating new docker builder instance: %s", cfg.Build.Builder)
+		err = app.lexec.Run(ctx, command.CreateBuilder(cfg.Build.Builder, cfg.Build.Driver, cfg.Build.Platform))
+		if err != nil {
+			return err
+		}
+	}
 
 	env := make([]string, 0)
 	for k, v := range cfg.Secrets {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 
-	err = app.lexec.Run(ctx, command.BuildImage(imgWithTag, cfg.Dockerfile, cfg.Secrets), localexec.WithEnv(env))
+	err = app.lexec.Run(ctx, command.BuildImage(image, cfg.Build.Dockerfile, cfg.Build.Platform, cfg.Secrets, cfg.Build.Args), localexec.WithEnv(env))
 	if err != nil {
-		return fmt.Errorf("failed to build image %s: %w", imgWithTag, err)
+		return err
 	}
 
-	err = app.lexec.Run(ctx, command.TagImage(imgWithTag, registryImg))
+	// check if proxy is running, start or run it if not
+	err = app.txmanager.Execute(ctx, func(ctx context.Context, client sshexec.Service) error {
+		var out bytes.Buffer
+		err := client.Run(ctx, command.ListRunningContainers(), sshexec.WithStdout(&out))
+		if err != nil {
+			return err
+		}
+		// proxy is running
+		if strings.Contains(out.String(), cfg.Proxy.Container) {
+			return nil
+		}
+
+		out.Reset()
+
+		// check if proxy is stopped
+		err = client.Run(ctx, command.ListAllContainers(), sshexec.WithStdout(&out))
+		if err != nil {
+			return err
+		}
+
+		// proxy is stopped, start it
+		if strings.Contains(out.String(), cfg.Proxy.Container) {
+			return client.Run(ctx, command.StartContainer(cfg.Proxy.Container))
+		}
+
+		// proxy container not found, run it
+		err = client.Run(ctx, command.RunProxy(cfg.Proxy.Img, formatFlags("label", cfg.Proxy.Labels), formatArgs(cfg.Proxy.Args)))
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
 	if err != nil {
-		return fmt.Errorf("failed to tag image %s: %w", imgWithTag, err)
+		return err
 	}
 
-	err = app.lexec.Run(ctx, command.PushImage(registryImg))
+	err = app.LoadHistory(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to push %s to %s: %w", imgWithTag, cfg.Registry.Server, err)
+		return fmt.Errorf("failed to read history at %s: %w", app.historyFilePath, err)
 	}
 
 	var envs []string
@@ -110,7 +154,7 @@ func (app *App) Deploy(ctx context.Context) error {
 	}
 
 	rollback, err := app.txmanager.BeginTransaction(ctx, func(ctx context.Context, tx txman.Transaction) error {
-		err := tx.Do(ctx, PullImage(registryImg), nil)
+		err := tx.Do(ctx, PullImage(image), nil)
 		if err != nil {
 			return err
 		}
@@ -118,7 +162,7 @@ func (app *App) Deploy(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		err = tx.Do(ctx, RunContainer(registryImg, newContainer, envs), StopContainer(newContainer))
+		err = tx.Do(ctx, RunContainer(image, newContainer, envs), StopContainer(newContainer))
 		if err != nil {
 			return err
 		}
@@ -132,6 +176,7 @@ func (app *App) Deploy(ctx context.Context) error {
 	})
 
 	if err != nil {
+		logging.Info("initiating rollback...")
 		rollbackCtx, rollbackCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer rollbackCancel()
 		if err := rollback(rollbackCtx); err != nil {
@@ -152,6 +197,7 @@ func (app *App) Rollback(ctx context.Context, version string) error {
 	if found < 0 {
 		return fmt.Errorf("version %s does not exist", version)
 	}
+	// set timestamp for rolled version to current time
 	app.history[found].Timestamp = time.Now()
 	history, err := json.Marshal(app.history)
 	if err != nil {
@@ -182,6 +228,7 @@ func (app *App) Rollback(ctx context.Context, version string) error {
 	})
 
 	if err != nil {
+		logging.Info("initiating rollback...")
 		rollbackCtx, rollbackCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer rollbackCancel()
 		if err := rollback(rollbackCtx); err != nil {
@@ -212,7 +259,7 @@ func (app *App) ShowServiceInfo(ctx context.Context) (map[string]string, error) 
 }
 
 func (app *App) ShowProxyInfo(ctx context.Context) (map[string]string, error) {
-	container := config.Get().Proxy.Name
+	container := config.Get().Proxy.Container
 	return app.showInfo(ctx, container)
 }
 
@@ -227,7 +274,7 @@ func (app *App) ServiceLogs(ctx context.Context, follow bool, lines int, since s
 }
 
 func (app *App) ProxyLogs(ctx context.Context, follow bool, lines int, since string) error {
-	container := config.Get().Proxy.Name
+	container := config.Get().Proxy.Container
 	return app.logs(ctx, container, follow, lines, since)
 }
 
@@ -241,7 +288,7 @@ func (app *App) StopService(ctx context.Context) error {
 }
 
 func (app *App) StopProxy(ctx context.Context) error {
-	container := config.Get().Proxy.Name
+	container := config.Get().Proxy.Container
 	return app.stopContainer(ctx, container)
 }
 
@@ -255,7 +302,7 @@ func (app *App) StartService(ctx context.Context) error {
 }
 
 func (app *App) StartProxy(ctx context.Context) error {
-	container := config.Get().Proxy.Name
+	container := config.Get().Proxy.Container
 	return app.startContainer(ctx, container)
 }
 
@@ -316,12 +363,23 @@ func (app *App) ExecService(ctx context.Context, execCmd string, interactive boo
 	}
 	cfg := config.Get()
 	container := fmt.Sprintf("%s-%s", cfg.Service, app.LatestVersion())
+	return app.exec(ctx, container, execCmd, interactive)
+}
+
+func (app *App) ExecProxy(ctx context.Context, execCmd string, interactive bool) error {
+	if err := app.LoadHistory(ctx); err != nil {
+		return err
+	}
+	return app.exec(ctx, config.Get().Proxy.Container, execCmd, interactive)
+}
+
+func (app *App) exec(ctx context.Context, container string, execCmd string, interactive bool) error {
 	return app.txmanager.Execute(ctx, func(ctx context.Context, client sshexec.Service) error {
-		err := client.Run(ctx, command.Exec(container, execCmd, interactive), sshexec.WithPty())
-		if err != nil {
-			return err
+		sessionOption := []sshexec.SessionOption{}
+		if interactive {
+			sessionOption = append(sessionOption, sshexec.WithPty())
 		}
-		return nil
+		return client.Run(ctx, command.Exec(container, execCmd, interactive), sessionOption...)
 	})
 }
 

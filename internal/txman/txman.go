@@ -153,13 +153,8 @@ func (m *txman) Execute(ctx context.Context, callback Callback) error {
 		close(errCh)
 	}()
 
-	var errs []error
-	for err := range errCh {
-		errs = append(errs, err)
-	}
-
-	if len(errs) > 0 {
-		return errors.Join(errs...)
+	if err := <-errCh; err != nil {
+		return err
 	}
 
 	return nil

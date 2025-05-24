@@ -6,13 +6,15 @@ import (
 	"io"
 	"os"
 	"sync"
+	"time"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/term"
 	"neite.dev/go-ship/internal/logging"
 )
 
-func (s *SSH) run(session *ssh.Session, cmd string, opts RunConfig) error {
+func (s *SSH) run(session *ssh.Session, cmd string, opts sessionOptions) error {
+	time.Sleep(2 * time.Second)
 	var wg sync.WaitGroup
 	errCh := make(chan error, 3) // buffer size of 3 for stdout, stderr, stdin
 	stderr, err := session.StderrPipe()
@@ -60,32 +62,7 @@ func (s *SSH) run(session *ssh.Session, cmd string, opts RunConfig) error {
 	return nil
 }
 
-func read(wg *sync.WaitGroup, pipefd fd, in io.Reader, out io.Writer, errCh chan<- error) {
-	defer wg.Done()
-	scanner := bufio.NewScanner(in)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if _, err := fmt.Fprintln(out, line); err != nil {
-			errCh <- pipeError{fd: pipefd, err: err}
-			return
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		errCh <- pipeError{fd: pipefd, err: err}
-	}
-}
-
-func write(wg *sync.WaitGroup, pipefd fd, in io.WriteCloser, out io.Reader, errCh chan<- error) {
-	defer wg.Done()
-	defer in.Close()
-	if _, err := io.Copy(in, out); err != nil {
-		if err != io.EOF {
-			errCh <- pipeError{fd: fdStdin, err: err}
-		}
-	}
-}
-
-func (s *SSH) runInteractiveSession(session *ssh.Session, cmd string, opts RunConfig) error {
+func (s *SSH) runInteractiveSession(session *ssh.Session, cmd string, opts sessionOptions) error {
 	localStdinFd := int(os.Stdin.Fd())
 	if term.IsTerminal(localStdinFd) {
 		originalStdinState, err := term.MakeRaw(localStdinFd)
@@ -122,4 +99,29 @@ func (s *SSH) runInteractiveSession(session *ssh.Session, cmd string, opts RunCo
 	}
 
 	return nil
+}
+
+func write(wg *sync.WaitGroup, pipefd fd, in io.WriteCloser, out io.Reader, errCh chan<- error) {
+	defer wg.Done()
+	defer in.Close()
+	if _, err := io.Copy(in, out); err != nil {
+		if err != io.EOF {
+			errCh <- pipeError{fd: fdStdin, err: err}
+		}
+	}
+}
+
+func read(wg *sync.WaitGroup, pipefd fd, in io.Reader, out io.Writer, errCh chan<- error) {
+	defer wg.Done()
+	scanner := bufio.NewScanner(in)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if _, err := fmt.Fprintln(out, line); err != nil {
+			errCh <- pipeError{fd: pipefd, err: err}
+			return
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		errCh <- pipeError{fd: pipefd, err: err}
+	}
 }

@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
@@ -33,7 +34,7 @@ var privateKeys = []string{
 }
 
 type Service interface {
-	Run(ctx context.Context, cmd string, options ...RunOption) error
+	Run(ctx context.Context, cmd string, options ...SessionOption) error
 
 	ReadFile(path string) ([]byte, error)
 
@@ -103,8 +104,8 @@ func (s *SSH) Host() string {
 	return s.host
 }
 
-func (s *SSH) Run(ctx context.Context, cmd string, options ...RunOption) error {
-	opts := RunConfig{
+func (s *SSH) Run(ctx context.Context, cmd string, options ...SessionOption) error {
+	opts := sessionOptions{
 		interactive: false,
 		stdout:      &logWriter{host: s.host},
 		stderr:      &logWriter{host: s.host},
@@ -120,25 +121,47 @@ func (s *SSH) Run(ctx context.Context, cmd string, options ...RunOption) error {
 	}
 	defer session.Close()
 
+	killedCh := make(chan bool, 1)
 	doneCh := make(chan struct{}, 1)
-	// close channel when exiting to signal goroutine below to stop
-	defer func() { close(doneCh) }()
 	go func() {
 		select {
 		case <-ctx.Done():
 			if err := session.Signal(ssh.SIGTERM); err != nil {
 				logging.ErrorHostf(s.host, "failed to stop command: %s", err)
+			} else {
+				killedCh <- true
 			}
 			return
 		case <-doneCh:
+			killedCh <- false
 			return
 		}
 	}()
 
+	var runErr error
 	if opts.interactive {
-		return s.runInteractiveSession(session, cmd, opts)
+		runErr = s.runInteractiveSession(session, cmd, opts)
+	} else {
+		runErr = s.run(session, cmd, opts)
 	}
-	return s.run(session, cmd, opts)
+
+	doneCh <- struct{}{}
+
+	if runErr != nil {
+		// command was successfully terminated, don't return error
+		if killed := <-killedCh; killed {
+			return nil
+		}
+		var exitErr *ssh.ExitError
+		if errors.As(runErr, &exitErr) {
+			if exitErr.ExitStatus() == 127 {
+				commandParts := strings.SplitN(cmd, " ", 1)
+				return CmdNotFoundErr{err: exitErr, command: commandParts[0], args: commandParts[1]}
+			}
+		}
+		return runErr
+	}
+	return nil
 }
 
 func (s *SSH) WriteFile(path string, data []byte) error {
@@ -164,39 +187,39 @@ func (s *SSH) ReadFile(path string) ([]byte, error) {
 	return contents.Bytes(), nil
 }
 
-type RunOption func(c *RunConfig)
+type SessionOption func(o *sessionOptions)
 
-type RunConfig struct {
+type sessionOptions struct {
 	stdout      io.Writer
 	stderr      io.Writer
 	stdin       io.Reader
 	interactive bool
 }
 
-func WithStdout(w io.Writer) RunOption {
-	return func(c *RunConfig) {
-		c.stdout = w
+func WithStdout(w io.Writer) SessionOption {
+	return func(opts *sessionOptions) {
+		opts.stdout = w
 	}
 }
 
-func WithStderr(w io.Writer) RunOption {
-	return func(c *RunConfig) {
-		c.stderr = w
+func WithStderr(w io.Writer) SessionOption {
+	return func(opts *sessionOptions) {
+		opts.stderr = w
 	}
 }
 
-func WithStdin(r io.Reader) RunOption {
-	return func(c *RunConfig) {
-		c.stdin = r
+func WithStdin(r io.Reader) SessionOption {
+	return func(opts *sessionOptions) {
+		opts.stdin = r
 	}
 }
 
-func WithPty() RunOption {
-	return func(c *RunConfig) {
-		c.interactive = true
-		c.stdin = os.Stdin
-		c.stdout = os.Stdout
-		c.stderr = os.Stderr
+func WithPty() SessionOption {
+	return func(opts *sessionOptions) {
+		opts.interactive = true
+		opts.stdin = os.Stdin
+		opts.stdout = os.Stdout
+		opts.stderr = os.Stderr
 	}
 }
 

@@ -11,7 +11,7 @@ import (
 // SSHServiceStub is a stub implementation of the Service interface.
 type SSHServiceStub struct {
 	hostName      string
-	RunFunc       func(ctx context.Context, cmd string, options ...sshexec.RunOption) error
+	RunFunc       func(ctx context.Context, cmd string, options ...sshexec.SessionOption) error
 	WriteFileFunc func(path string, data []byte) error
 	ReadFileFunc  func(path string) ([]byte, error)
 }
@@ -24,7 +24,7 @@ func NewMockSSHLikeService(hostName string) *SSHServiceStub {
 }
 
 // Run simulates executing a command.
-func (stub *SSHServiceStub) Run(ctx context.Context, cmd string, options ...sshexec.RunOption) error {
+func (stub *SSHServiceStub) Run(ctx context.Context, cmd string, options ...sshexec.SessionOption) error {
 	// Simulate work and context cancellation
 	select {
 	case <-time.After(300 * time.Millisecond): // Simulate some work

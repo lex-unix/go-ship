@@ -17,7 +17,7 @@ func TestBeginTransactin(t *testing.T) {
 		var mu sync.Mutex
 		calls := make(map[string][]string)
 		sshClient1 := NewMockSSHLikeService("host1")
-		sshClient1.RunFunc = func(ctx context.Context, cmd string, options ...sshexec.RunOption) error {
+		sshClient1.RunFunc = func(ctx context.Context, cmd string, options ...sshexec.SessionOption) error {
 			mu.Lock()
 			defer mu.Unlock()
 			calls[sshClient1.hostName] = append(calls[sshClient1.hostName], cmd)
@@ -25,7 +25,7 @@ func TestBeginTransactin(t *testing.T) {
 		}
 
 		sshClient2 := NewMockSSHLikeService("host1")
-		sshClient2.RunFunc = func(ctx context.Context, cmd string, options ...sshexec.RunOption) error {
+		sshClient2.RunFunc = func(ctx context.Context, cmd string, options ...sshexec.SessionOption) error {
 			mu.Lock()
 			defer mu.Unlock()
 			calls[sshClient2.hostName] = append(calls[sshClient1.hostName], cmd)
@@ -67,7 +67,7 @@ func TestBeginTransactin(t *testing.T) {
 		// waitCh is used to sync command execution progress between ssh clients
 		waitCh := make(chan struct{})
 		sshClient1 := NewMockSSHLikeService("host1")
-		sshClient1.RunFunc = func(ctx context.Context, cmd string, options ...sshexec.RunOption) error {
+		sshClient1.RunFunc = func(ctx context.Context, cmd string, options ...sshexec.SessionOption) error {
 			if cmd == "command 2" {
 				select {
 				// wait for sshClient2 to finish executing 'command 1'
@@ -81,7 +81,7 @@ func TestBeginTransactin(t *testing.T) {
 		}
 
 		sshClient2 := NewMockSSHLikeService("host2")
-		sshClient2.RunFunc = func(ctx context.Context, cmd string, options ...sshexec.RunOption) error {
+		sshClient2.RunFunc = func(ctx context.Context, cmd string, options ...sshexec.SessionOption) error {
 			if cmd == "command 1" {
 				// signal sshClient1 that 'command 1' has completed
 				close(waitCh)
@@ -116,7 +116,7 @@ func TestBeginTransactin(t *testing.T) {
 	t.Run("executes rollback functions in correct order", func(t *testing.T) {
 		rollbackCmds := make([]string, 0)
 		sshClient := NewMockSSHLikeService("host1")
-		sshClient.RunFunc = func(ctx context.Context, cmd string, options ...sshexec.RunOption) error {
+		sshClient.RunFunc = func(ctx context.Context, cmd string, options ...sshexec.SessionOption) error {
 			if cmd == "command 3" {
 				return errors.New("command failed")
 			}
